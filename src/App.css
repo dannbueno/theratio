@@ -159,3 +159,19 @@ h3 {
   padding: 0;
   margin-top: 20px;
 }
+
+.strava-auth-button {
+  background-color: #fc4c02; /* Color característico de Strava */
+  color: white;
+  font-weight: bold;
+  border: none;
+  padding: 10px 30px;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background-color 200ms ease;
+}
+
+.strava-auth-button:hover {
+  background-color: #e84500; /* Color más oscuro al hacer hover */
+}

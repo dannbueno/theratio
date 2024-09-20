@@ -69,7 +69,6 @@ function Dashboard() {
         {activities.length > 0 ? (
           activities.map(activity => {
             const activityClass = activity.type.charAt(0).toLowerCase() + activity.type.slice(1);
-            console.log(activity.sport_type)
 
             return (
               <li key={activity.id} className={`activity-item ${activityClass}`}>
@@ -127,12 +126,14 @@ export default App;
 
 function Home() {
   return (
-    <div>
-      <h1>theratio</h1>
-      <h2>Connect with Strava</h2>
-      <a href="https://www.strava.com/oauth/authorize?client_id=129187&response_type=code&redirect_uri=https://theratio.vercel.app/redirect&scope=read,activity:read_all">
-        <button className="btn strava-auth-button">Authenticate with Strava</button>
-      </a>
+    <div className="home-container">
+      <div className="home-content">
+        <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
+        <h1 className='header-title'>·theratio·</h1>
+        <a href="https://www.strava.com/oauth/authorize?client_id=129187&response_type=code&redirect_uri=https://theratio.vercel.app/redirect&scope=read,activity:read_all" className="strava-button">
+          Authenticate with Strava
+        </a>
+      </div>
     </div>
   );
 }

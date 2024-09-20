@@ -149,7 +149,10 @@ h3 {
 }
 
 .header-title {
-  font-size: 2rem; /* Tamaño ajustable para el texto */
+  margin-top: 5px;
+  margin: 0; /* Elimina cualquier margen superior */
+  padding: 0;
+  font-size: 2rem;
   font-family: 'Brush Script MT';
   color: #333;
   text-align: center; /* Centrar el texto debajo del logo */
@@ -160,18 +163,41 @@ h3 {
   margin-top: 20px;
 }
 
-.strava-auth-button {
-  background-color: #fc4c02; /* Color característico de Strava */
-  color: white;
-  font-weight: bold;
-  border: none;
-  padding: 10px 30px;
-  border-radius: 5px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 200ms ease;
+.home-container {
+  display: flex;
+  justify-content: flex-start;
+  align-items: flex-start;
+  height: 100vh;
+  background-color: #f5f5f5; /* Fondo claro */
 }
 
-.strava-auth-button:hover {
-  background-color: #e84500; /* Color más oscuro al hacer hover */
+.home-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background-color: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.logo {
+  width: 150px; /* Ajusta el tamaño del logo */
+  margin-bottom: 10px;
+}
+
+.strava-button {
+  background-color: #fc4c02; /* Color Strava */
+  color: white;
+  padding: 10px 30px;
+  text-decoration: none;
+  border-radius: 5px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  transition: background-color 0.3s;
+}
+
+.strava-button:hover {
+  background-color: #e84500;
 }

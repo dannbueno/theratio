@@ -57,6 +57,9 @@ function Dashboard() {
           <img src={'/theratio_logo.png'} alt={`theRatio`} />
           <div className="header-title">·theratio·</div>
         </div>
+        <div className='header-right'>
+          <button onClick={handleLogout} className="logout-button">Logout</button>
+        </div>
       </div>
 
       <h2>{athlete.firstname} {athlete.lastname} Last Strava Activities</h2>
@@ -176,4 +179,9 @@ function StravaRedirect() {
   }, [code, navigate]);
 
   return <div>Strava Authorization Completed!</div>;
+}
+
+function handleLogout() {
+  localStorage.removeItem('token_strava');
+  window.location.href = '/';
 }

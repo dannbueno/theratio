@@ -17,6 +17,21 @@ h3 {
   color: #666;
 }
 
+.logout-button {
+  background-color: #e74c3c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: 5px;
+  margin-top: 20px;
+}
+
+.logout-button:hover {
+  background-color: #c0392b;
+}
+
 /* Estilo para el listado de actividades */
 .activities-list {
   list-style-type: none;

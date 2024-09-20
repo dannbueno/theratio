@@ -127,7 +127,7 @@ function Home() {
     <div>
       <h1>theratio</h1>
       <h2>Connect with Strava</h2>
-      <a href="https://www.strava.com/oauth/authorize?client_id=129187&response_type=code&redirect_uri=http://localhost:3000/redirect&scope=read,activity:read_all">
+      <a href="https://www.strava.com/oauth/authorize?client_id=129187&response_type=code&redirect_uri=http://theratio.vercel.app/redirect/redirect&scope=read,activity:read_all">
         Authenticate with Strava
       </a>
     </div>

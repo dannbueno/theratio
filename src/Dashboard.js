@@ -80,11 +80,10 @@ export function Dashboard() {
                             <li key={activity.id} id={activity.id} className={`activity-item ${activityClass}`}>
                                 <span className="activity-date">{formatDate(activity.start_date_local)} | {activity.sport_type}</span>
                                 <div className="activity-name">
-                                    <a href={`https://www.strava.com/activities/${activity.id}`} target="_blank" rel="noopener noreferrer">
+                                    <a href={`https://www.strava.com/activities/${activity.id}`} target="_blank" rel="noopener noreferrer" className="no-link-style">
                                         {activity.name}
                                     </a>
                                 </div>
-
 
 
                                 <div className="activity-details">

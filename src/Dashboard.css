@@ -33,6 +33,11 @@ h3 {
 }
 
 /* Estilo para el listado de actividades */
+.no-link-style {
+  text-decoration: none;
+  color: inherit; /* Hereda el color del texto circundante */
+}
+
 .activities-list {
   list-style-type: none;
   padding: 0;

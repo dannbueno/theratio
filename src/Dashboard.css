@@ -40,8 +40,8 @@ h3 {
 }
 
 .no-link-style:hover {
-  color: inherit; /* Asegúrate de que no cambie el color al pasar el ratón */
-  text-decoration: none;
+  font-weight: bold;
+  text-decoration: underline;
 }
 
 .activities-list {

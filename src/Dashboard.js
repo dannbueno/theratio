@@ -77,9 +77,14 @@ export function Dashboard() {
                         const activityClass = activity.type.charAt(0).toLowerCase() + activity.type.slice(1);
 
                         return (
-                            <li key={activity.id} className={`activity-item ${activityClass}`}>
+                            <li key={activity.id} id={activity.id} className={`activity-item ${activityClass}`}>
                                 <span className="activity-date">{formatDate(activity.start_date_local)} | {activity.sport_type}</span>
-                                <div className="activity-name">{activity.name}</div>
+                                <div className="activity-name">
+                                    <a href={`https://www.strava.com/activities/${activity.id}`} target="_blank" rel="noopener noreferrer">
+                                        {activity.name}
+                                    </a>
+                                </div>
+
 
 
                                 <div className="activity-details">

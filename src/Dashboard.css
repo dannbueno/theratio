@@ -35,7 +35,13 @@ h3 {
 /* Estilo para el listado de actividades */
 .no-link-style {
   text-decoration: none;
-  color: inherit; /* Hereda el color del texto circundante */
+  color: inherit;
+  cursor: default; /* Cambia el cursor a uno normal */
+}
+
+.no-link-style:hover {
+  color: inherit; /* Asegúrate de que no cambie el color al pasar el ratón */
+  text-decoration: none;
 }
 
 .activities-list {

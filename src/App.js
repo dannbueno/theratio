@@ -4,6 +4,12 @@ import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from
 import { useEffect, useState } from 'react';
 import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './stravaUtils';
 
+const CLIENT_ID = '129187';
+const CLIENT_SECRET = '32de5ccecc07b133839496a48020e53437dc4aa1';
+const REDIRECT_URL = 'theratio.vercel.app';
+
+
+
 function Dashboard() {
   const [activities, setActivities] = useState([]);
   const [athlete, setAthlete] = useState({});
@@ -130,8 +136,10 @@ function Home() {
       <div className="home-content">
         <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
         <h1 className='header-title'>·theratio·</h1>
-        <a href="https://www.strava.com/oauth/authorize?client_id=129187&response_type=code&redirect_uri=https://theratio.vercel.app/redirect&scope=read,activity:read_all" className="strava-button">
-          Authenticate with Strava
+        <a
+          href={`https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=https://${REDIRECT_URL}/redirect&scope=read,activity:read_all`}
+          className="strava-button"
+        >          Authenticate with Strava
         </a>
       </div>
     </div>
@@ -152,8 +160,8 @@ function StravaRedirect() {
 
     // Intercambiar el código por un token de acceso
     const data = {
-      client_id: '129187',
-      client_secret: '32de5ccecc07b133839496a48020e53437dc4aa1',
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
       code: code,
       grant_type: 'authorization_code',
     };
@@ -183,6 +191,6 @@ function StravaRedirect() {
 }
 
 function handleLogout() {
-  localStorage.removeItem('token_strava');
+  //localStorage.removeItem('token_strava');
   window.location.href = '/';
 }

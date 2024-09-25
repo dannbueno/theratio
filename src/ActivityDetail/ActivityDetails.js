@@ -4,7 +4,6 @@ import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement
 import './ActivityDetails.css'
 import AltimetryChart from '../Charts/AltimetryChart';
 
-// Registrar los elementos de ChartJS
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
 
 function ActivityDetails({ activityId }) {
@@ -100,31 +99,6 @@ function ActivityDetails({ activityId }) {
                     <p>Time in Zone 5 ({activityZones[0]?.distribution_buckets[4]?.min} - {activityDetails.max_heartrate}): {secondsToTime(activityZones[0]?.distribution_buckets[4]?.time)}</p>
                 </>
             )}
-            {/*             
-            <h4>Streams: </h4>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Time (s)</th>
-                        <th>Distance (m)</th>
-                        <th>Heart Rate (bpm)</th>
-                        <th>Power (Watts)</th>
-                        <th>Altitude (m)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {activityStreamTime.map((time, index) => (
-                        <tr key={index}>
-                            <td>{time}</td>
-                            <td>{activityStreamDistance[index]}</td>
-                            <td>{activityStreamHeartRate[index] !== null && activityStreamHeartRate[index] !== undefined ? activityStreamHeartRate[index] : 'N/A'}</td>
-                            <td>{activityStreamPower[index] !== null && activityStreamPower[index] !== undefined ? activityStreamPower[index] : 'N/A'}</td>
-                            <td>{activityStreamAltitude[index] !== null && activityStreamAltitude[index] !== undefined ? activityStreamAltitude[index] : 'N/A'}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-            */}
         </div>
     );
 }

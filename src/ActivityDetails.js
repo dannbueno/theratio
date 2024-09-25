@@ -1,5 +1,12 @@
 import { useEffect, useState } from 'react';
 import { metersToKm, secondsToTime, metersPerSecondToPace, calculateElevationRatio } from './utils';
+import { Line } from 'react-chartjs-2';
+import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend } from 'chart.js';
+import './ActivityDetails.css'
+import AltimetryChart from './AltimetryChart';
+
+// Registrar los elementos de ChartJS
+ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
 
 function ActivityDetails({ activityId }) {
     const [activityDetails, setActivityDetails] = useState({});
@@ -10,6 +17,7 @@ function ActivityDetails({ activityId }) {
     const [activityStreamTime, setActivityStreamTime] = useState([]);
     const [activityStreamAltitude, setActivityStreamAltitude] = useState([]);
 
+    // Evita actualizar los datos de los streams si ya han sido cargados
     useEffect(() => {
         if (!activityId) return;
 
@@ -42,7 +50,7 @@ function ActivityDetails({ activityId }) {
                 setActivityDetails(activityDetails);
                 setActivityZones(activityZones);
 
-                // Si un stream no está disponible, muestra un mensaje en la consola
+                // Actualiza solo si los streams son diferentes
                 setActivityStreamHeartRate(activityStreams.heartrate ? activityStreams.heartrate.data : []);
                 setActivityStreamPower(activityStreams.watts ? activityStreams.watts.data : []);
                 setActivityStreamDistance(activityStreams.distance ? activityStreams.distance.data : []);
@@ -59,14 +67,7 @@ function ActivityDetails({ activityId }) {
         return <div>Loading activity details...</div>;
     }
 
-    console.log('Heartrate Stream:', activityStreamHeartRate);
-    console.log('Power Stream:', activityStreamPower);
-    console.log('Distance Stream:', activityStreamDistance);
-    console.log('Altitude Stream:', activityStreamAltitude);
-    console.log('Time Stream:', activityStreamTime);
-
     return (
-
         <div>
             <h2>
                 <a
@@ -86,6 +87,10 @@ function ActivityDetails({ activityId }) {
             <p>Average Heart Rate: {activityDetails.average_heartrate} ppm </p>
             <p>Elevation ratio: {calculateElevationRatio(activityDetails.total_elevation_gain, activityDetails.distance)} m+/km</p>
 
+            {/* Gráfico de altimetría */}
+            <AltimetryChart activityStreamDistance={activityStreamDistance} activityStreamAltitude={activityStreamAltitude} />
+
+
             <h4>Activity Heart Rate Zones</h4>
             {activityZones[0] && (
                 <>
@@ -96,6 +101,7 @@ function ActivityDetails({ activityId }) {
                     <p>Time in Zone 5 ({activityZones[0]?.distribution_buckets[4]?.min} - {activityDetails.max_heartrate}): {secondsToTime(activityZones[0]?.distribution_buckets[4]?.time)}</p>
                 </>
             )}
+            {/*             
             <h4>Streams: </h4>
             <table>
                 <thead>
@@ -119,9 +125,9 @@ function ActivityDetails({ activityId }) {
                     ))}
                 </tbody>
             </table>
+            */}
         </div>
     );
 }
 
 export default ActivityDetails;
-

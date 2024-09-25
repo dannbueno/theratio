@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react';
-import { metersToKm, secondsToTime, metersPerSecondToPace, calculateElevationRatio } from './utils';
-import { Line } from 'react-chartjs-2';
+import { metersToKm, secondsToTime, metersPerSecondToPace, calculateElevationRatio } from '../Utils/utils';
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend } from 'chart.js';
 import './ActivityDetails.css'
-import AltimetryChart from './AltimetryChart';
+import AltimetryChart from '../Charts/AltimetryChart';
 
 // Registrar los elementos de ChartJS
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);

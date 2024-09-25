@@ -1,10 +1,10 @@
 import './Dashboard.css';
 import './Modal.css'
-import { metersToKm, secondsToTime, metersPerSecondToKmPerHour, metersPerSecondToPace, calculateElevationRatio, formatDate } from './utils';
-import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './stravaUtils';
+import { metersToKm, secondsToTime, metersPerSecondToKmPerHour, metersPerSecondToPace, calculateElevationRatio, formatDate } from './Utils/utils';
+import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './Utils/stravaUtils';
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import ActivityDetails from './ActivityDetails';
+import ActivityDetails from './ActivityDetail/ActivityDetails';
 
 export function Dashboard() {
     const [activities, setActivities] = useState([]);

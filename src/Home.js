@@ -6,7 +6,8 @@ import { Dashboard } from './Dashboard';
 
 const CLIENT_ID = '129187';
 const CLIENT_SECRET = '32de5ccecc07b133839496a48020e53437dc4aa1';
-const REDIRECT_URL = 'theratio.vercel.app';
+//const REDIRECT_URI = 'https://theratio.vercel.app';
+const REDIRECT_URI = 'http://localhost:3000';
 
 
 // Definición del componente App con el enrutamiento
@@ -32,7 +33,7 @@ function Home() {
         <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
         <h1 className='header-title'>·theratio·</h1>
         <a
-          href={`https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=https://${REDIRECT_URL}/redirect&scope=read,activity:read_all`}
+          href={`https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all`}
           className="strava-button"
         >          Authenticate with Strava
         </a>
@@ -48,12 +49,20 @@ function StravaRedirect() {
   const code = params.get('code');
 
   useEffect(() => {
-    if (!code) {
-      console.error('Authorization code is missing');
+    console.log('useEffect called');
+
+    const usedCode = localStorage.getItem('used_code');
+
+    if (!code || code === usedCode) {
+      console.error('Authorization code is missing or already used');
       return;
     }
 
-    // Intercambiar el código por un token de acceso
+    // Solo seguir adelante si el código es válido y no se ha usado
+    if (!code) return;
+
+    localStorage.setItem('used_code', code);
+
     const data = {
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
@@ -68,19 +77,30 @@ function StravaRedirect() {
     })
       .then(response => {
         if (!response.ok) {
-          throw new Error('Failed to exchange code for token');
+          return response.json().then(errData => {
+            throw new Error(`Error: ${response.status} - ${errData.message}`);
+          });
         }
         return response.json();
       })
       .then(data => {
+        console.log('Access token received:', data.access_token);
         localStorage.setItem('token_strava', data.access_token);
+        localStorage.removeItem('used_code');
         navigate('/dashboard');
       })
       .catch(error => {
         console.error('Error:', error);
-        alert('There was an issue during the authentication process. Please try again.');
       });
+
   }, [code, navigate]);
 
-  return <div>Strava Authorization Completed!</div>;
+  return (
+    <div >
+      <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
+      <h1 className='header-title'>·theratio·</h1>
+      <div>Strava Authorization Completed!</div>;
+      <div>Redirecting to your dashboard...</div>;
+    </div>
+  );
 }

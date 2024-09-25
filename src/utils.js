@@ -14,35 +14,29 @@ export function secondsToTime(seconds) {
     let minutes = Math.floor((seconds % 3600) / 60);
     let remainingSeconds = seconds % 60;
 
-    // Redondear segundos a minutos si es mayor o igual a 30 segundos
-    if (remainingSeconds >= 30) {
-        minutes += 1;
-    }
-
-    // Si los minutos llegan a 60, incrementar las horas
-    if (minutes === 60) {
-        hours += 1;
-        minutes = 0;
-    }
-
-    // Redondear horas si los minutos son 1 o menos
-    if (minutes <= 1) {
-        minutes = 0; // Eliminamos los minutos si son 1 o menos
-    }
-
     let timeString = '';
 
     if (hours > 0) {
         timeString += `${hours}h `;
     }
 
-    // Solo mostrar minutos si son mayores a 0
     if (minutes > 0) {
-        timeString += `${minutes}m`;
+        timeString += `${minutes}m `;
     }
 
-    return timeString.trim(); // Eliminar espacios en blanco sobrantes
+    if (remainingSeconds > 0) {
+        timeString += `${remainingSeconds}s`;
+    }
+
+    // If none of the above conditions are met, it's 0 seconds
+    if (timeString === '') {
+        timeString = '0s';
+    }
+
+    return timeString.trim(); // Removes any trailing spaces
 }
+
+
 
 export function metersPerSecondToKmPerHour(mps) {
     const kmPerHour = mps * 3.6; // 1 metro por segundo es igual a 3.6 km/h

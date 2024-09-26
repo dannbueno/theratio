@@ -69,3 +69,52 @@ export function formatDate(dateString) {
 
     return `${day}/${month}/${year} ${hours}:${minutes}`; // Formato estándar DD/MM/YYYY HH:mm
 }
+
+export async function getLocationDetails(latlng) {
+    const lat = latlng[0];
+    const lon = latlng[1];
+
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&addressdetails=1&accept-language=ca`;
+
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        let villageOrTown = null;
+        let state = data.address.state || 'State not available';
+        let county = data.address.county || '';
+        let locationString = '';
+
+        // Identificar el pueblo, ciudad o villa
+        if (data && data.address) {
+            if (data.address.village) {
+                villageOrTown = data.address.village;
+            } else if (data.address.town) {
+                villageOrTown = data.address.town;
+            } else if (data.address.city) {
+                villageOrTown = data.address.city;
+            }
+
+            // Construir la cadena de ubicación
+            locationString = villageOrTown ? villageOrTown : 'Unknown location';
+
+            // Incluir el condado si está disponible
+            if (county) {
+                locationString += `, ${county}`;
+            }
+
+            // Añadir el estado (o región)
+            locationString += `, ${state}`;
+        }
+
+        return locationString.trim();
+
+    } catch (error) {
+        console.error('Error fetching location details:', error);
+        return "Location not available";
+    }
+}

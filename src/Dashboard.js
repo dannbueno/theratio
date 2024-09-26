@@ -98,7 +98,7 @@ export function Dashboard() {
                                 className={`activity-item ${activityClass}`}
                                 onClick={() => handleActivityClick(activity.id)} // Almacena el ID de la actividad seleccionada
                             >
-                                <span className="activity-date">{formatDate(activity.start_date_local)} | {activity.sport_type}</span>
+                                <span className="activity-date">{formatDate(activity.start_date)} | {activity.sport_type}</span>
                                 <div className="activity-name">
                                     <a
                                         href={`https://www.strava.com/activities/${activity.id}`}

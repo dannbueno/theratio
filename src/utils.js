@@ -36,8 +36,6 @@ export function secondsToTime(seconds) {
     return timeString.trim(); // Removes any trailing spaces
 }
 
-
-
 export function metersPerSecondToKmPerHour(mps) {
     const kmPerHour = mps * 3.6; // 1 metro por segundo es igual a 3.6 km/h
     return kmPerHour.toFixed(2); // Redondea a 2 decimales

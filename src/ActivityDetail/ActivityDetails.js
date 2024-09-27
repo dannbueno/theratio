@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { metersToKm, secondsToTime, metersPerSecondToPace, calculateElevationRatio, formatDate, getLocationDetails, metersPerSecondToKmPerHour } from '../Utils/utils';
+import { metersToKm, secondsToTime, metersPerSecondToPace, calculateElevationRatio, formatDate, getLocationDetails, metersPerSecondToKmPerHour } from '../utils';
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend } from 'chart.js';
 import './ActivityDetails.css'
 import AltimetryChart from '../Charts/AltimetryChart';
 import PowerHeartRateChart from '../Charts/PowerHeartRateChart';
 import HeartRateCadencePaceChart from '../Charts/HeartRateCadencePaceChart';
+import { isTokenExpired, refreshAccessToken } from '../Home';
+
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
 
@@ -20,30 +22,28 @@ function ActivityDetails({ activityId }) {
     const [location, setLocation] = useState(null);
 
     useEffect(() => {
-        if (!activityId) return;
+        const token = localStorage.getItem('token_strava');
 
-        console.log('Fetching details for activity ID:', activityId);
-
-        // Crear función asíncrona para usar await
-        const fetchActivityDetails = async () => {
+        async function fetchActivityDetails() {
             try {
                 const [activityDetailsRes, activityZonesRes, activityStreamsRes] = await Promise.all([
                     fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('token_strava')}`,
-                        },
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token_strava')}` },
                     }),
                     fetch(`https://www.strava.com/api/v3/activities/${activityId}/zones`, {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('token_strava')}`,
-                        },
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token_strava')}` },
                     }),
                     fetch(`https://www.strava.com/api/v3/activities/${activityId}/streams?keys=heartrate,watts,altitude,distance,time,cadence&key_by_type=true`, {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('token_strava')}`,
-                        },
+                        headers: { Authorization: `Bearer ${localStorage.getItem('token_strava')}` },
                     }),
                 ]);
+
+                if (activityDetailsRes.status === 401 || activityZonesRes.status === 401 || activityStreamsRes.status === 401) {
+                    console.log('Token expirado, intentando renovar...');
+                    await refreshAccessToken();
+                    fetchActivityDetails();
+                    return;
+                }
 
                 if (!activityDetailsRes.ok || !activityZonesRes.ok || !activityStreamsRes.ok) {
                     throw new Error('Error fetching data from Strava API');
@@ -60,24 +60,30 @@ function ActivityDetails({ activityId }) {
                 setActivityStreamHeartRate(activityStreams.heartrate ? activityStreams.heartrate.data : []);
                 setActivityStreamPower(activityStreams.watts ? activityStreams.watts.data : []);
                 setActivityStreamDistance(activityStreams.distance ? activityStreams.distance.data : []);
-                setActivityStreamTime(activityStreams.time ? activityStreams.time.data : []);  // Ensure the time stream is available
+                setActivityStreamTime(activityStreams.time ? activityStreams.time.data : []);
                 setActivityStreamAltitude(activityStreams.altitude ? activityStreams.altitude.data : []);
                 setActivityStreamCadence(activityStreams.cadence ? activityStreams.cadence.data : []);
 
-                // Get location based on lat/lng
                 if (activityDetails.start_latlng && activityDetails.start_latlng.length) {
                     const locationDetails = await getLocationDetails(activityDetails.start_latlng);
-                    setLocation(locationDetails); // Save the location
+                    setLocation(locationDetails);
                 }
 
             } catch (error) {
                 console.error('Error fetching details:', error);
             }
-        };
+        }
 
-
-        fetchActivityDetails(); // Ejecutar la función
+        if (!token || isTokenExpired()) {
+            refreshAccessToken().then(() => {
+                fetchActivityDetails();
+            }).catch(error => console.error('Error refreshing access token:', error));
+        } else {
+            fetchActivityDetails();
+        }
     }, [activityId]);
+
+
 
     // Condición para mostrar el estado de carga solo si todos los streams están vacíos
     if (!activityZones.length || (!activityStreamHeartRate.length && !activityStreamPower.length && !activityStreamDistance.length && !activityStreamTime.length && !activityStreamAltitude.length && !activityStreamCadence.length)) {

@@ -1,5 +1,5 @@
 import { Line } from 'react-chartjs-2';
-import { metersPerSecondToKmPerHour, metersPerSecondToPace } from '../Utils/utils';
+import { metersPerSecondToKmPerHour, metersPerSecondToPace } from '../utils';
 import ActivityDetails from '../ActivityDetail/ActivityDetails';
 
 function HeartRateCadencePaceChart({ activityStreamHeartRate, activityStreamCadence, activityStreamTime, activityStreamDistance, sportType }) {
@@ -59,7 +59,7 @@ function HeartRateCadencePaceChart({ activityStreamHeartRate, activityStreamCade
         labels: truncatedTimeStream, // X-axis with time values
         datasets: [
             {
-                label: 'Heart Rate (BPM)  {ActivityDetails.average_heartrate}',
+                label: 'Heart Rate (BPM)',
                 data: truncatedHeartRateStream,
                 borderColor: 'rgba(255, 99, 132, 1)', // Red color for heart rate
                 fill: false,

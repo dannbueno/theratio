@@ -1,22 +1,23 @@
-import './Dashboard.css';
-import './Modal.css'
-import { metersToKm, secondsToTime, metersPerSecondToKmPerHour, metersPerSecondToPace, calculateElevationRatio, formatDate } from './Utils/utils';
-import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './Utils/stravaUtils';
-import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import './Dashboard.css';
+import './Modal.css';
+import { metersToKm, secondsToTime, metersPerSecondToKmPerHour, metersPerSecondToPace, calculateElevationRatio, formatDate } from './utils';
+import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './stravaUtils';
 import ActivityDetails from './ActivityDetail/ActivityDetails';
+import { refreshAccessToken, isTokenExpired } from './Home';
 
 export function Dashboard() {
     const [activities, setActivities] = useState([]);
     const [athlete, setAthlete] = useState({});
     const [selectedActivityId, setSelectedActivityId] = useState(null);
-    const token = localStorage.getItem('token_strava');
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const navigate = useNavigate();
-    const [isModalOpen, setIsModalOpen] = useState(false); // Estado para controlar el modal
 
     // Función para hacer logout
     const handleLogout = () => {
         localStorage.removeItem('token_strava');
+        localStorage.removeItem('expires_at');
         navigate('/');
     };
 
@@ -31,31 +32,53 @@ export function Dashboard() {
     };
 
     useEffect(() => {
-        // Fetch para obtener los datos del atleta y actividades
-        if (!token) {
-            navigate('/');
-            return;
+        async function fetchData() {
+            let token = localStorage.getItem('token_strava');
+
+            // Verificar si el token ha expirado
+            if (!token || isTokenExpired()) {
+                console.log("Token expirado o inexistente, renovando...");
+                await refreshAccessToken();
+                token = localStorage.getItem('token_strava');
+            }
+
+            if (!token) {
+                console.error('No token found even after refresh');
+                return;
+            }
+
+            try {
+                // Limitar las solicitudes para evitar 429
+                const athleteRes = await fetch('https://www.strava.com/api/v3/athlete', {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+
+                if (!athleteRes.ok) {
+                    throw new Error('Error fetching athlete data');
+                }
+
+                const athleteData = await athleteRes.json();
+                setAthlete(athleteData);
+
+                const activitiesRes = await fetch('https://www.strava.com/api/v3/athlete/activities', {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+
+                if (!activitiesRes.ok) {
+                    throw new Error('Error fetching activities data');
+                }
+
+                const activitiesData = await activitiesRes.json();
+                setActivities(activitiesData);
+
+            } catch (error) {
+                console.error('Error fetching athlete or activities:', error);
+            }
         }
 
-        Promise.all([
-            fetch('https://www.strava.com/api/v3/athlete', {
-                headers: { 'Authorization': `Bearer ${token}` },
-            }),
-            fetch('https://www.strava.com/api/v3/athlete/activities', {
-                headers: { 'Authorization': `Bearer ${token}` },
-            }),
-        ])
-            .then(async ([athleteRes, activitiesRes]) => {
-                if (!athleteRes.ok || !activitiesRes.ok) {
-                    throw new Error('Error fetching data from Strava API');
-                }
-                const athleteData = await athleteRes.json();
-                const activitiesData = await activitiesRes.json();
-                setAthlete(athleteData);
-                setActivities(activitiesData);
-            })
-            .catch(error => console.error('Error fetching athlete or activities:', error));
-    }, [token, navigate]);
+        fetchData();
+    }, [navigate]);
+
 
     const totalTimeThisWeek = getTotalTimeThisWeek(activities);
     const formattedTotalTimeThisWeek = secondsToTime(totalTimeThisWeek);

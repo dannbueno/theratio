@@ -9,6 +9,35 @@ const CLIENT_SECRET = '32de5ccecc07b133839496a48020e53437dc4aa1';
 //const REDIRECT_URI = 'https://theratio.vercel.app';
 const REDIRECT_URI = 'http://localhost:3000';
 
+export async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem('refresh_token');  // Obtén el refresh token
+  if (!refreshToken) throw new Error('No refresh token found');
+
+  const response = await fetch('https://www.strava.com/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token',
+    }),
+  });
+  const data = await response.json();
+  if (data.access_token) {
+    localStorage.setItem('token_strava', data.access_token); // Guarda el nuevo token de acceso
+    localStorage.setItem('refresh_token', data.refresh_token); // Actualiza el refresh token si es necesario
+    localStorage.setItem('expires_at', data.expires_at); // Guarda la nueva fecha de expiración
+  } else {
+    throw new Error('Error refreshing access token');
+  }
+}
+
+export function isTokenExpired() {
+  const tokenExpiration = localStorage.getItem('expires_at');
+  const currentTime = Math.floor(Date.now() / 1000); // Tiempo actual en segundos
+  return currentTime >= tokenExpiration;
+}
 
 // Definición del componente App con el enrutamiento
 function App() {
@@ -49,8 +78,6 @@ function StravaRedirect() {
   const code = params.get('code');
 
   useEffect(() => {
-    console.log('useEffect called');
-
     const usedCode = localStorage.getItem('used_code');
 
     if (!code || code === usedCode) {
@@ -58,7 +85,6 @@ function StravaRedirect() {
       return;
     }
 
-    // Solo seguir adelante si el código es válido y no se ha usado
     if (!code) return;
 
     localStorage.setItem('used_code', code);
@@ -86,9 +112,12 @@ function StravaRedirect() {
       .then(data => {
         console.log('Access token received:', data.access_token);
         localStorage.setItem('token_strava', data.access_token);
-        localStorage.removeItem('used_code');
+        localStorage.setItem('refresh_token', data.refresh_token);
+        localStorage.setItem('expires_at', data.expires_at);
+        localStorage.setItem('used_code', code);
         navigate('/dashboard');
       })
+
       .catch(error => {
         console.error('Error:', error);
       });

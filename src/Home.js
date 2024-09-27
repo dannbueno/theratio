@@ -78,10 +78,11 @@ function StravaRedirect() {
   const code = params.get('code');
 
   useEffect(() => {
+    console.log('StravaRedirect useEffect');
     const usedCode = localStorage.getItem('used_code');
 
     if (!code || code === usedCode) {
-      console.error('Authorization code is missing or already used');
+      //Si el código ya existe no volvemos a hacer la llamada
       return;
     }
 

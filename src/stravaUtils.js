@@ -1,5 +1,5 @@
 import { startOfWeek, endOfWeek } from 'date-fns';
-import { calculateElevationRatio } from './utils';
+import { calculateElevationRatio } from './utils.js';
 
 export function getActivitiesThisWeek(activities) {
     const now = new Date();

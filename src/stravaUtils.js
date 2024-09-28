@@ -1,4 +1,3 @@
-// stravaUtils.js
 import { startOfWeek, endOfWeek } from 'date-fns';
 import { calculateElevationRatio } from './utils';
 

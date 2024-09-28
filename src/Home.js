@@ -2,12 +2,7 @@ import './Home.css';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Dashboard } from './Dashboard';
-
-
-const CLIENT_ID = '129187';
-const CLIENT_SECRET = '32de5ccecc07b133839496a48020e53437dc4aa1';
-//const REDIRECT_URI = 'https://theratio.vercel.app';
-const REDIRECT_URI = 'http://localhost:3000';
+import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } from './Credentials';
 
 export async function refreshAccessToken() {
   const refreshToken = localStorage.getItem('refresh_token');  // Obtén el refresh token
@@ -62,7 +57,7 @@ function Home() {
         <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
         <h1 className='header-title'>·theratio·</h1>
         <a
-          href={`https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all`}
+          href={`https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all,activity:write`}
           className="strava-button"
         >          Authenticate with Strava
         </a>
@@ -79,14 +74,13 @@ function StravaRedirect() {
 
   useEffect(() => {
     console.log('StravaRedirect useEffect');
+
     const usedCode = localStorage.getItem('used_code');
 
     if (!code || code === usedCode) {
       //Si el código ya existe no volvemos a hacer la llamada
       return;
     }
-
-    if (!code) return;
 
     localStorage.setItem('used_code', code);
 
@@ -111,7 +105,6 @@ function StravaRedirect() {
         return response.json();
       })
       .then(data => {
-        console.log('Access token received:', data.access_token);
         localStorage.setItem('token_strava', data.access_token);
         localStorage.setItem('refresh_token', data.refresh_token);
         localStorage.setItem('expires_at', data.expires_at);

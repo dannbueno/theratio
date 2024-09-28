@@ -6,6 +6,7 @@ import AltimetryChart from '../Charts/AltimetryChart';
 import PowerHeartRateChart from '../Charts/PowerHeartRateChart';
 import HeartRateCadencePaceChart from '../Charts/HeartRateCadencePaceChart';
 import { isTokenExpired, refreshAccessToken } from '../Home';
+import { handleAddRatioToStrava } from '../stravaUtils';
 
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
@@ -82,8 +83,6 @@ function ActivityDetails({ activityId }) {
             fetchActivityDetails();
         }
     }, [activityId]);
-
-
 
     // Condición para mostrar el estado de carga solo si todos los streams están vacíos
     if (!activityZones.length || (!activityStreamHeartRate.length && !activityStreamPower.length && !activityStreamDistance.length && !activityStreamTime.length && !activityStreamAltitude.length && !activityStreamCadence.length)) {
@@ -210,6 +209,7 @@ function ActivityDetails({ activityId }) {
                     <p>Pace: {metersPerSecondToPace(activityDetails.average_speed)} /km</p>
                     <p>Average Heart Rate: {activityDetails.average_heartrate} ppm </p>
                     <p>Elevation ratio: {calculateElevationRatio(activityDetails.total_elevation_gain, activityDetails.distance)} m+/km</p>
+                    <button onClick={() => handleAddRatioToStrava(activityDetails)}>Add Ratio to Strava</button>
                     <p>Watts: {activityDetails.average_watts} W</p>
 
                     {/* Gráfico de altimetría */}

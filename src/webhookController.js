@@ -1,21 +1,50 @@
 const express = require('express');
-const { commentOnActivity } = require('./commentActivity');
+const { handleAddRatioToStrava } = require('./stravaUtils');
 const app = express();
 app.use(express.json());
 
+// Verificar la suscripción de Strava
+app.post('/webhook', (req, res) => {
+    if (req.query['hub.verify_token'] === 'STRAVA_VERIFY_TOKEN') {
+        res.status(200).json({ 'hub.challenge': req.query['hub.challenge'] });
+    } else {
+        res.status(400).send('Verification failed');
+    }
+});
+
+// Manejar las notificaciones de Strava
 app.post('/webhook', async (req, res) => {
     const event = req.body;
 
+    // Revisa si el evento es una nueva actividad creada
     if (event.object_type === 'activity' && event.aspect_type === 'create') {
-        const activityId = event.object_id;
+        // Extrae detalles de la actividad del evento recibido
+        const activityDetails = {
+            id: event.object_id,
+            type: event.object_type,
+            total_elevation_gain: event.updates ? event.updates.total_elevation_gain : 0,
+            distance: event.updates ? event.updates.distance : 0,
+            description: '', // Se inicializa vacío porque no tenemos la descripción completa del evento
+        };
+
         try {
-            await commentOnActivity(activityId);  // Asegurarse de esperar a que termine
-            res.status(200).send('Comentario añadido');
+            // Verifica si la actividad es de tipo TrailRun
+            if (event.updates && event.updates.type === 'TrailRun') {
+                await handleAddRatioToStrava(activityDetails); // Llama a la función que actualiza la descripción
+                res.status(200).send('Ratio añadido a la descripción.');
+            } else {
+                res.status(200).send('No es una actividad de tipo TrailRun.');
+            }
         } catch (error) {
-            console.error('Error al comentar:', error);
-            res.status(500).send('Error al añadir comentario');
+            console.error('Error al actualizar la descripción:', error);
+            res.status(500).send('Error al actualizar la descripción.');
         }
     } else {
-        res.status(200).send('Evento recibido');
+        res.status(200).send('Evento no manejado.');
     }
 });
+
+// Inicializa el servidor en el puerto deseado (por ejemplo, 3000)
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor de webhook escuchando en el puerto ${PORT}`));
+

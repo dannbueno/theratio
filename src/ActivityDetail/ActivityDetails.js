@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { metersToKm, secondsToTime, metersPerSecondToPace, calculateElevationRatio, formatDate, getLocationDetails, metersPerSecondToKmPerHour } from '../utils.js';
+import { metersToKm, secondsToTime, metersPerSecondToPace, calculateElevationRatio, formatDate, getLocationDetails, metersPerSecondToKmPerHour } from '../utils';
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend } from 'chart.js';
 import './ActivityDetails.css'
-import AltimetryChart from '../Charts/AltimetryChart.js';
-import PowerHeartRateChart from '../Charts/PowerHeartRateChart.js';
-import HeartRateCadencePaceChart from '../Charts/HeartRateCadencePaceChart.js';
-import { isTokenExpired, refreshAccessToken } from '../Home.js';
-import { handleAddRatioToStrava } from '../stravaUtils.js';
+import AltimetryChart from '../Charts/AltimetryChart';
+import PowerHeartRateChart from '../Charts/PowerHeartRateChart';
+import HeartRateCadencePaceChart from '../Charts/HeartRateCadencePaceChart';
+import { isTokenExpired, refreshAccessToken } from '../Home';
+import { handleAddRatioToStrava } from '../stravaUtils';
 
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);

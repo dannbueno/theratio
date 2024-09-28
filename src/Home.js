@@ -1,8 +1,8 @@
 import './Home.css';
 import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
-import { Dashboard } from './Dashboard';
-import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } from './Credentials';
+import { Dashboard } from './Dashboard.js';
+import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } from './Credentials.js';
 
 export async function refreshAccessToken() {
   const refreshToken = localStorage.getItem('refresh_token');  // Obtén el refresh token

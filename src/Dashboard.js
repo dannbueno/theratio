@@ -34,7 +34,6 @@ export function Dashboard() {
     useEffect(() => {
         async function fetchData() {
             let token = localStorage.getItem('token_strava');
-            console.log('Token: ' + token);
 
             // Verificar si el token ha expirado
             if (!token || isTokenExpired()) {

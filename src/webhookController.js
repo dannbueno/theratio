@@ -9,6 +9,8 @@ const verifyToken = process.env.STRAVA_VERIFY_TOKEN || '4882a27f3ff0f0beb3dcfb6f
 
 // Verificar la suscripción de Strava
 app.get('/webhook', (req, res) => {
+    console.log('req.query')
+    console.log(req.query)
     if (req.query['hub.verify_token'] === verifyToken) {
         res.status(200).json({ 'hub.challenge': req.query['hub.challenge'] });
     } else {

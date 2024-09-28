@@ -1,11 +1,12 @@
 const express = require('express');
 const { handleAddRatioToStrava } = require('./stravaUtils');
 const app = express();
+const token = localStorage.getItem('token_strava');
 app.use(express.json());
 
 // Verificar la suscripción de Strava
-app.post('/webhook', (req, res) => {
-    if (req.query['hub.verify_token'] === 'STRAVA_VERIFY_TOKEN') {
+app.get('/webhook', (req, res) => {
+    if (req.query['hub.verify_token'] === token) {
         res.status(200).json({ 'hub.challenge': req.query['hub.challenge'] });
     } else {
         res.status(400).send('Verification failed');

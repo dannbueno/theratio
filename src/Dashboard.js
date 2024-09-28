@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 import './Modal.css';
-import { metersToKm, secondsToTime, metersPerSecondToKmPerHour, metersPerSecondToPace, calculateElevationRatio, formatDate } from './utils';
-import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './stravaUtils';
-import ActivityDetails from './ActivityDetail/ActivityDetails';
+import { metersToKm, secondsToTime, metersPerSecondToKmPerHour, metersPerSecondToPace, calculateElevationRatio, formatDate } from './utils.js';
+import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './stravaUtils.js';
+import ActivityDetails from './ActivityDetail/ActivityDetails.js';
 import { refreshAccessToken, isTokenExpired } from './Home.js';
 
 export function Dashboard() {

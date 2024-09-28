@@ -5,7 +5,7 @@ import './ActivityDetails.css'
 import AltimetryChart from '../Charts/AltimetryChart';
 import PowerHeartRateChart from '../Charts/PowerHeartRateChart';
 import HeartRateCadencePaceChart from '../Charts/HeartRateCadencePaceChart';
-import { isTokenExpired, refreshAccessToken } from '../Home';
+import { isTokenExpired, refreshAccessToken } from '../Home.js';
 import { handleAddRatioToStrava } from '../stravaUtils';
 
 

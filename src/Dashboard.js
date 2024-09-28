@@ -5,7 +5,7 @@ import './Modal.css';
 import { metersToKm, secondsToTime, metersPerSecondToKmPerHour, metersPerSecondToPace, calculateElevationRatio, formatDate } from './utils';
 import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './stravaUtils';
 import ActivityDetails from './ActivityDetail/ActivityDetails';
-import { refreshAccessToken, isTokenExpired } from './Home';
+import { refreshAccessToken, isTokenExpired } from './Home.js';
 
 export function Dashboard() {
     const [activities, setActivities] = useState([]);

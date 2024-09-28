@@ -1,5 +1,5 @@
 import express from 'express';
-import { handleAddRatioToStrava } from './stravaUtils.js';
+import { handleAddRatioToStrava } from './stravaUtils';
 const app = express();
 app.use(express.json());
 

@@ -1,5 +1,5 @@
 import { Line } from 'react-chartjs-2';
-import { metersPerSecondToKmPerHour, metersPerSecondToPace } from '../utils.js';
+import { metersPerSecondToKmPerHour, metersPerSecondToPace } from '../utils';
 
 function HeartRateCadencePaceChart({ activityStreamHeartRate, activityStreamCadence, activityStreamTime, activityStreamDistance, sportType }) {
 

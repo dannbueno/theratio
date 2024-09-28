@@ -1,12 +1,15 @@
 const express = require('express');
 const { handleAddRatioToStrava } = require('./stravaUtils');
 const app = express();
-const token = localStorage.getItem('token_strava');
 app.use(express.json());
+require('dotenv').config();
+
+// Verificar la suscripción de Strava usando un token de entorno
+const verifyToken = process.env.STRAVA_VERIFY_TOKEN || '4882a27f3ff0f0beb3dcfb6f039d5c56cc7b8e65'; // Establece tu token de verificación aquí
 
 // Verificar la suscripción de Strava
 app.get('/webhook', (req, res) => {
-    if (req.query['hub.verify_token'] === token) {
+    if (req.query['hub.verify_token'] === verifyToken) {
         res.status(200).json({ 'hub.challenge': req.query['hub.challenge'] });
     } else {
         res.status(400).send('Verification failed');
@@ -48,4 +51,3 @@ app.post('/webhook', async (req, res) => {
 // Inicializa el servidor en el puerto deseado (por ejemplo, 3000)
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor de webhook escuchando en el puerto ${PORT}`));
-

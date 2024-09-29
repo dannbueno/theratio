@@ -38,7 +38,7 @@ export function getRunningStatisticsThisWeek(activities) {
 export async function handleAddRatioToStrava(activityDetails) {
     const token = localStorage.getItem('token_strava');
     const elevationRatio = calculateElevationRatio(activityDetails.total_elevation_gain, activityDetails.distance);
-    const ratioText = `${elevationRatio} m+/km (by: https://theratio.vercel.app)`;
+    const ratioText = `${elevationRatio} m+/km by: theratio.vercel.app`;
 
     if (!token || !activityDetails.id) return;
 

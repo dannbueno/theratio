@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } from './Credentials';
+import { CLIENT_ID, CLIENT_SECRET } from './Credentials.js';
 
 export default function StravaRedirect() {
     const location = useLocation();

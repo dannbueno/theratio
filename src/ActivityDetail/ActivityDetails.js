@@ -5,8 +5,8 @@ import './ActivityDetails.css'
 import AltimetryChart from '../Charts/AltimetryChart.js';
 import PowerHeartRateChart from '../Charts/PowerHeartRateChart.js';
 import HeartRateCadencePaceChart from '../Charts/HeartRateCadencePaceChart.js';
-import { isTokenExpired, refreshAccessToken } from '../Home.js';
 import { handleAddRatioToStrava } from '../stravaUtils.js';
+import { isTokenExpired, refreshAccessToken } from '../Home.js'
 
 
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
@@ -41,7 +41,7 @@ function ActivityDetails({ activityId }) {
 
                 if (activityDetailsRes.status === 401 || activityZonesRes.status === 401 || activityStreamsRes.status === 401) {
                     console.log('Token expirado, intentando renovar...');
-                    await refreshAccessToken();
+                    await refreshAccessToken()
                     fetchActivityDetails();
                     return;
                 }

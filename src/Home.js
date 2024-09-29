@@ -1,129 +1,27 @@
-import './Home.css';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
-import { Dashboard } from './Dashboard.js';
-import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } from './Credentials.js';
+import React, { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { CLIENT_ID, REDIRECT_URI } from './Credentials.js';
 
-export async function refreshAccessToken() {
-  const refreshToken = localStorage.getItem('refresh_token');  // Obtén el refresh token
-  if (!refreshToken) throw new Error('No refresh token found');
-
-  const response = await fetch('https://www.strava.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      refresh_token: refreshToken,
-      grant_type: 'refresh_token',
-    }),
-  });
-  const data = await response.json();
-  if (data.access_token) {
-    localStorage.setItem('token_strava', data.access_token); // Guarda el nuevo token de acceso
-    localStorage.setItem('refresh_token', data.refresh_token); // Actualiza el refresh token si es necesario
-    localStorage.setItem('expires_at', data.expires_at); // Guarda la nueva fecha de expiración
-  } else {
-    throw new Error('Error refreshing access token');
-  }
-}
-
-export function isTokenExpired() {
-  const tokenExpiration = localStorage.getItem('expires_at');
-  const currentTime = Math.floor(Date.now() / 1000); // Tiempo actual en segundos
-  return currentTime >= tokenExpiration;
-}
-
-// Definición del componente App con el enrutamiento
-function App() {
-  return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/redirect" element={<StravaRedirect />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-      </Routes>
-    </Router>
-  );
-}
-
-// Exportamos App como el componente principal
-export default App;
-
-function Home() {
-  return (
-    <div className="home-container">
-      <div className="home-content">
-        <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
-        <h1 className='header-title'>·theratio·</h1>
-        <a
-          href={`https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all,activity:write`}
-          className="strava-button"
-        >          Authenticate with Strava
-        </a>
-      </div>
-    </div>
-  );
-}
-
-function StravaRedirect() {
-  const location = useLocation();
+export default function Home() {
   const navigate = useNavigate();
-  const params = new URLSearchParams(location.search);
-  const code = params.get('code');
 
+  // Verificar si ya hay un token para redirigir directamente al Dashboard
   useEffect(() => {
-    console.log('StravaRedirect useEffect');
-
-    const usedCode = localStorage.getItem('used_code');
-
-    if (!code || code === usedCode) {
-      //Si el código ya existe no volvemos a hacer la llamada
-      return;
+    const token = localStorage.getItem('token_strava');
+    if (token) {
+      navigate('/dashboard'); // Si ya está autenticado, redirigimos al Dashboard
     }
+  }, [navigate]);
 
-    localStorage.setItem('used_code', code);
-
-    const data = {
-      client_id: CLIENT_ID,
-      client_secret: CLIENT_SECRET,
-      code: code,
-      grant_type: 'authorization_code',
-    };
-
-    fetch('https://www.strava.com/oauth/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-      .then(response => {
-        if (!response.ok) {
-          return response.json().then(errData => {
-            throw new Error(`Error: ${response.status} - ${errData.message}`);
-          });
-        }
-        return response.json();
-      })
-      .then(data => {
-        localStorage.setItem('token_strava', data.access_token);
-        localStorage.setItem('refresh_token', data.refresh_token);
-        localStorage.setItem('expires_at', data.expires_at);
-        localStorage.setItem('used_code', code);
-        navigate('/dashboard');
-      })
-
-      .catch(error => {
-        console.error('Error:', error);
-      });
-
-  }, [code, navigate]);
+  const handleLogin = () => {
+    // Redirecciona a la página de autenticación de Strava
+    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=read,activity:read_all`;
+  };
 
   return (
-    <div >
-      <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
-      <h1 className='header-title'>·theratio·</h1>
-      <div>Strava Authorization Completed!</div>;
-      <div>Redirecting to your dashboard...</div>;
+    <div>
+      <h1>Welcome to theRatio</h1>
+      <button onClick={handleLogin}>Authenticate with Strava</button>
     </div>
   );
 }

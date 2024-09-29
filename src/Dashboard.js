@@ -86,11 +86,12 @@ export default function Dashboard() {
     const formattedTotalDistanceRunningThisWeek = metersToKm(runningStats.totalDistance);
     const formattedTotalTimeRunningThisWeek = secondsToTime(runningStats.totalTime);
 
+
     return (
         <div>
             <div className="header">
                 <div className="header-left">
-                    <a href="https://www.strava.com/activities/athlete" target="_blank" rel="noopener noreferrer">
+                    <a href={`https://www.strava.com/activities/athletes/${athlete.id}`} target="_blank" rel="noopener noreferrer">
                         <img
                             src={athlete.profile_medium}
                             alt={`${athlete.firstname || ''} ${athlete.lastname || ''}`}

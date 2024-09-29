@@ -1,9 +1,8 @@
 import './Home.css';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import Home from './Home.js';
+import Home, { refreshAccessToken } from './Home.js';
 import Dashboard from './Dashboard.js';
 import StravaRedirect from './StravaRedirect.js';
-import { refreshAccessToken } from '../Home.js';
 import { useEffect, useState } from 'react';
 import { isTokenExpired } from './Credentials.js';
 
@@ -14,7 +13,7 @@ function ProtectedRoute({ children }) {
     useEffect(() => {
         const token = localStorage.getItem('token_strava');
         if (!token || isTokenExpired()) {
-            refreshAccessToken()
+            refreshAccessToken
                 .then(() => setTokenValid(true))
                 .catch(() => setTokenValid(false));
         } else {

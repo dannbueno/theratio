@@ -90,11 +90,13 @@ export default function Dashboard() {
         <div>
             <div className="header">
                 <div className="header-left">
-                    <img
-                        src={athlete.profile_medium}
-                        alt={`${athlete.firstname || ''} ${athlete.lastname || ''}`}
-                        href={`https://www.strava.com/activities/athlete`}
-                    />
+                    <a href="https://www.strava.com/activities/athlete" target="_blank" rel="noopener noreferrer">
+                        <img
+                            src={athlete.profile_medium}
+                            alt={`${athlete.firstname || ''} ${athlete.lastname || ''}`}
+                        />
+                    </a>
+
                 </div>
                 <div className="header-center">
                     <img src={'/theratio_logo.png'} alt={`theRatio`} />

@@ -59,6 +59,7 @@ export default function Home() {
         <button className="strava-button" onClick={handleLogin}>
           Authenticate with Strava
         </button>
+        <p>Work in progress by Dan Bueno</p>
       </div>
     </div>
   );

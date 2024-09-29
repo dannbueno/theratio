@@ -185,10 +185,18 @@ export default function Dashboard() {
 }
 
 function Modal({ closeModal, children }) {
+    // Función para manejar el clic en el overlay
+    const handleOverlayClick = (event) => {
+        // Si el clic es en el overlay y no en el contenido, cerrar el modal
+        if (event.target.className === 'modal-overlay') {
+            closeModal();
+        }
+    };
+
     return (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={handleOverlayClick}>
             <div className="modal-content">
-                <button onClick={closeModal} className="modal-close">X</button>
+                <button onClick={closeModal} className="modal-close">Close</button>
                 {children}
             </div>
         </div>

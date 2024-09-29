@@ -117,8 +117,8 @@ export default function Dashboard() {
             <h2>{athlete.firstname} {athlete.lastname} Last Strava Activities</h2>
             <div className='week-activities'>
                 <h4>Total time this week: {formattedTotalTimeThisWeek}</h4>
-                <h4>Total running this week: {formattedTotalDistanceRunningThisWeek} km | {runningStats.totalElevation} m+ | {formattedTotalTimeRunningThisWeek}</h4>
-                <h4>Comparing with previous week: {diffBetweenWeeks.distance} km | {diffBetweenWeeks.elevation} m+ | {diffBetweenWeeks.time}</h4>
+                <h4>Total running this week: {formattedTotalDistanceRunningThisWeek} km | {runningStats.totalElevation.toLocaleString('es-ES')} m+ | {formattedTotalTimeRunningThisWeek}</h4>
+                <h4>Comparing with previous week: {diffBetweenWeeks.distance} km | {diffBetweenWeeks.elevation.toLocaleString('es-ES')} m+ | {diffBetweenWeeks.time}</h4>
                 <h4>Total running this month: {formattedTotalDistanceRunningThisMonth} km | {runningStatsMonth.totalElevation} m+ | {formattedTotalTimeRunningThisMonth}</h4>
 
             </div>
@@ -150,15 +150,15 @@ export default function Dashboard() {
                                         <span className="metric">{secondsToTime(activity.moving_time)}</span>
                                     ) : activity.type === 'Walk' ? (
                                         <span className="metric">
-                                            {metersToKm(activity.distance)} km | {activity.total_elevation_gain} m+ | {secondsToTime(activity.moving_time)} | {activity.average_heartrate} ppm
+                                            {metersToKm(activity.distance)} km | {activity.total_elevation_gain.toLocaleString('es-ES')} m+ | {secondsToTime(activity.moving_time)} | {activity.average_heartrate} ppm
                                         </span>
                                     ) : activity.type === 'Ride' ? (
                                         <span className="metric">
-                                            {metersToKm(activity.distance)} km | {metersPerSecondToKmPerHour(activity.average_speed)} km/h | {activity.total_elevation_gain} m+ | {secondsToTime(activity.moving_time)} | {activity.average_heartrate} ppm | {activity.average_watts} W
+                                            {metersToKm(activity.distance)} km | {metersPerSecondToKmPerHour(activity.average_speed)} km/h | {activity.total_elevation_gain.toLocaleString('es-ES')} m+ | {secondsToTime(activity.moving_time)} | {activity.average_heartrate} ppm | {activity.average_watts} W
                                         </span>
                                     ) : activity.sport_type === 'TrailRun' ? (
                                         <span className="metric">
-                                            {metersToKm(activity.distance)} km | {activity.total_elevation_gain} m+ | {metersPerSecondToPace(activity.average_speed)} /km | {secondsToTime(activity.moving_time)} | {activity.average_heartrate} ppm | {calculateElevationRatio(activity.total_elevation_gain, activity.distance)} +/km
+                                            {metersToKm(activity.distance)} km | {activity.total_elevation_gain.toLocaleString('es-ES')} m+ | {metersPerSecondToPace(activity.average_speed)} /km | {secondsToTime(activity.moving_time)} | {activity.average_heartrate} ppm | {calculateElevationRatio(activity.total_elevation_gain, activity.distance)} +/km
                                         </span>
                                     ) : (
                                         <span className="metric">

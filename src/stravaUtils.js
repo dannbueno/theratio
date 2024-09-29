@@ -66,13 +66,12 @@ export function getRunningStatisticsPreviousWeek(activities) {
 export function comparingWeeks(thisWeek, previousWeek) {
     // Calcular diferencias
     let distance = metersToKm(thisWeek.totalDistance - previousWeek.totalDistance);
-
     let elevation = thisWeek.totalElevation - previousWeek.totalElevation;
     let time = thisWeek.totalTime - previousWeek.totalTime;
 
-    // Formatear las diferencias
-    distance = distance >= 0 ? `+ ${distance}` : `- ${Math.abs(distance)}`;
-    elevation = elevation >= 0 ? `+ ${elevation}` : `- ${Math.abs(elevation)}`;
+    // Formatear las diferencias con separadores de miles
+    distance = distance >= 0 ? `+ ${distance.toLocaleString('es-ES')}` : `- ${Math.abs(distance).toLocaleString('es-ES')}`;
+    elevation = elevation >= 0 ? `+ ${elevation.toLocaleString('es-ES')}` : `- ${Math.abs(elevation).toLocaleString('es-ES')}`;
 
     // Verificar si el tiempo es positivo o negativo y formatear
     time = time >= 0 ? `+ ${secondsToTime(time)}` : `- ${secondsToTime(Math.abs(time))}`;
@@ -106,7 +105,7 @@ export function getRunningStatisticsThisMonth(activities) {
     const runningActivities = activitiesThisMonth.filter(activity => activity.type === 'Run');
 
     const totalDistance = runningActivities.reduce((total, activity) => total + activity.distance, 0);
-    const totalElevation = runningActivities.reduce((total, activity) => total + activity.total_elevation_gain, 0);
+    const totalElevation = runningActivities.reduce((total, activity) => total + activity.total_elevation_gain, 0).toLocaleString('es-ES');
     const totalTime = runningActivities.reduce((total, activity) => total + activity.moving_time, 0);
 
     return {

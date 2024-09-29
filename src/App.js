@@ -3,8 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Home from './Home.js';
 import Dashboard from './Dashboard.js';
 import StravaRedirect from './StravaRedirect.js';
+import { refreshAccessToken } from '../Home.js';
 import { useEffect, useState } from 'react';
-import { refreshAccessToken, isTokenExpired } from './Credentials.js';
+import { isTokenExpired } from './Credentials.js';
 
 // Componente para proteger rutas
 function ProtectedRoute({ children }) {

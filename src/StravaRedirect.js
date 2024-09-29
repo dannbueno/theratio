@@ -1,15 +1,19 @@
-import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { CLIENT_ID, CLIENT_SECRET } from './Credentials.js';
 
-export default function StravaRedirect() {
+function StravaRedirect() {
     const location = useLocation();
     const navigate = useNavigate();
     const params = new URLSearchParams(location.search);
     const code = params.get('code');
 
     useEffect(() => {
-        if (!code) return;
+        const usedCode = localStorage.getItem('used_code');
+
+        if (!code || code === usedCode) {
+            return;
+        }
 
         localStorage.setItem('used_code', code);
 
@@ -25,32 +29,23 @@ export default function StravaRedirect() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data),
         })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(errData => {
-                        throw new Error(`Error: ${response.status} - ${errData.message}`);
-                    });
-                }
-                return response.json();
-            })
-            .then(data => {
+            .then((response) => response.json())
+            .then((data) => {
                 localStorage.setItem('token_strava', data.access_token);
                 localStorage.setItem('refresh_token', data.refresh_token);
                 localStorage.setItem('expires_at', data.expires_at);
                 localStorage.setItem('used_code', code);
                 navigate('/dashboard');
             })
-            .catch(error => {
-                console.error('Error:', error);
-            });
+            .catch((error) => console.error('Error:', error));
     }, [code, navigate]);
 
     return (
         <div>
-            <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
-            <h1 className='header-title'>·theratio·</h1>
-            <div>Strava Authorization Completed!</div>
+            <h1>Strava Authorization Completed!</h1>
             <div>Redirecting to your dashboard...</div>
         </div>
     );
 }
+
+export default StravaRedirect;

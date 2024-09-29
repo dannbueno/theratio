@@ -93,7 +93,7 @@ export default function Dashboard() {
                     <img
                         src={athlete.profile_medium}
                         alt={`${athlete.firstname || ''} ${athlete.lastname || ''}`}
-                        href={`https://www.strava.com/activities/${athlete}`}
+                        href={`https://www.strava.com/activities/athlete`}
                     />
                 </div>
                 <div className="header-center">

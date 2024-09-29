@@ -55,7 +55,7 @@ export default function Home() {
     <div className="home-container">
       <div className="home-content">
         <img src={'/theratio_logo.png'} alt="theRatio logo" className="logo" />
-        <h1>Welcome to theRatio</h1>
+        <h1>Welcome to theratio</h1>
         <button className="strava-button" onClick={handleLogin}>
           Authenticate with Strava
         </button>

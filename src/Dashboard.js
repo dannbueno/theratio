@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 import './Modal.css';
 import { metersToKm, secondsToTime, metersPerSecondToKmPerHour, metersPerSecondToPace, calculateElevationRatio, formatDate } from './utils.js';
-import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './stravaUtils.js';
+import { getTotalTimeThisWeek, getRunningStatisticsThisWeek, getTotalTimeThisMonth, getRunningStatisticsThisMonth, getRunningStatisticsPreviousWeek, comparingWeeks } from './stravaUtils.js';
 import ActivityDetails from './ActivityDetail/ActivityDetails.js';
 import { refreshAccessToken, isTokenExpired } from './Home.js';
 
@@ -85,7 +85,13 @@ export default function Dashboard() {
     const runningStats = getRunningStatisticsThisWeek(activities);
     const formattedTotalDistanceRunningThisWeek = metersToKm(runningStats.totalDistance);
     const formattedTotalTimeRunningThisWeek = secondsToTime(runningStats.totalTime);
-
+    const runningStatsPreviousWeek = getRunningStatisticsPreviousWeek(activities);
+    const diffBetweenWeeks = comparingWeeks(runningStats, runningStatsPreviousWeek);
+    const totalTimeThisMonth = getTotalTimeThisMonth(activities);
+    const formattedTotalTimeThisMonth = secondsToTime(totalTimeThisMonth);
+    const runningStatsMonth = getRunningStatisticsThisMonth(activities);
+    const formattedTotalDistanceRunningThisMonth = metersToKm(runningStatsMonth.totalDistance);
+    const formattedTotalTimeRunningThisMonth = secondsToTime(runningStatsMonth.totalTime);
 
     return (
         <div>
@@ -110,8 +116,11 @@ export default function Dashboard() {
 
             <h2>{athlete.firstname} {athlete.lastname} Last Strava Activities</h2>
             <div className='week-activities'>
-                <h4>Total Time This Week: {formattedTotalTimeThisWeek}</h4>
-                <h4>Totals Running This Week: {formattedTotalDistanceRunningThisWeek} km | {runningStats.totalElevation} m+ | {formattedTotalTimeRunningThisWeek}</h4>
+                <h4>Total time this week: {formattedTotalTimeThisWeek}</h4>
+                <h4>Total running this week: {formattedTotalDistanceRunningThisWeek} km | {runningStats.totalElevation} m+ | {formattedTotalTimeRunningThisWeek}</h4>
+                <h4>Comparing with previous week: {diffBetweenWeeks.distance} km | {diffBetweenWeeks.elevation} m+ | {diffBetweenWeeks.time}</h4>
+                <h4>Total running this month: {formattedTotalDistanceRunningThisMonth} km | {runningStatsMonth.totalElevation} m+ | {formattedTotalTimeRunningThisMonth}</h4>
+
             </div>
 
             <ul className="activities-list">

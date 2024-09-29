@@ -1,5 +1,5 @@
-import { startOfWeek, endOfWeek } from 'date-fns';
-import { calculateElevationRatio } from './utils.js';
+import { startOfWeek, endOfWeek, subDays, startOfMonth, endOfMonth } from 'date-fns';
+import { calculateElevationRatio, metersToKm, secondsToTime } from './utils.js';
 
 export function getActivitiesThisWeek(activities) {
     const now = new Date();
@@ -34,6 +34,89 @@ export function getRunningStatisticsThisWeek(activities) {
         totalTime,
     };
 }
+
+//Get Activities previous week
+
+export function getActivitiesPreviousWeek(activities) {
+    const now = new Date();
+    const startOfPreviousWeek = startOfWeek(subDays(now, 7), { weekStartsOn: 1 }); // Lunes de la semana anterior
+    const endOfPreviousWeek = endOfWeek(subDays(now, 7), { weekStartsOn: 1 }); // Domingo de la semana anterior
+
+    return activities.filter(activity => {
+        const activityDate = new Date(activity.start_date);
+        return activityDate >= startOfPreviousWeek && activityDate <= endOfPreviousWeek;
+    });
+}
+
+export function getRunningStatisticsPreviousWeek(activities) {
+    const activitiesPreviousWeek = getActivitiesPreviousWeek(activities);
+    const runningActivities = activitiesPreviousWeek.filter(activity => activity.type === 'Run');
+
+    const totalDistance = runningActivities.reduce((total, activity) => total + activity.distance, 0);
+    const totalElevation = runningActivities.reduce((total, activity) => total + activity.total_elevation_gain, 0);
+    const totalTime = runningActivities.reduce((total, activity) => total + activity.moving_time, 0);
+
+    return {
+        totalDistance,
+        totalElevation,
+        totalTime,
+    };
+}
+
+export function comparingWeeks(thisWeek, previousWeek) {
+    // Calcular diferencias
+    let distance = metersToKm(thisWeek.totalDistance - previousWeek.totalDistance);
+
+    let elevation = thisWeek.totalElevation - previousWeek.totalElevation;
+    let time = thisWeek.totalTime - previousWeek.totalTime;
+
+    // Formatear las diferencias
+    distance = distance >= 0 ? `+ ${distance}` : `- ${Math.abs(distance)}`;
+    elevation = elevation >= 0 ? `+ ${elevation}` : `- ${Math.abs(elevation)}`;
+
+    // Verificar si el tiempo es positivo o negativo y formatear
+    time = time >= 0 ? `+ ${secondsToTime(time)}` : `- ${secondsToTime(Math.abs(time))}`;
+
+    return { distance, elevation, time };
+}
+
+//Get activities this month
+
+export function getActivitiesThisMonth(activities) {
+    const now = new Date();
+    const startOfMonthDate = startOfMonth(now); // Primer día del mes actual
+    const endOfMonthDate = endOfMonth(now); // Último día del mes actual
+
+    return activities.filter(activity => {
+        const activityDate = new Date(activity.start_date); // Fecha de inicio de la actividad
+        return activityDate >= startOfMonthDate && activityDate <= endOfMonthDate;
+    });
+}
+
+export function getTotalTimeThisMonth(activities) {
+    const activitiesThisMonth = getActivitiesThisMonth(activities);
+
+    return activitiesThisMonth.reduce((totalTime, activity) => {
+        return totalTime + activity.moving_time;
+    }, 0);
+}
+
+export function getRunningStatisticsThisMonth(activities) {
+    const activitiesThisMonth = getActivitiesThisMonth(activities);
+    const runningActivities = activitiesThisMonth.filter(activity => activity.type === 'Run');
+
+    const totalDistance = runningActivities.reduce((total, activity) => total + activity.distance, 0);
+    const totalElevation = runningActivities.reduce((total, activity) => total + activity.total_elevation_gain, 0);
+    const totalTime = runningActivities.reduce((total, activity) => total + activity.moving_time, 0);
+
+    return {
+        totalDistance,
+        totalElevation,
+        totalTime,
+    };
+}
+
+//Controlar el addratio
 
 export async function handleAddRatioToStrava(activityDetails) {
     const token = localStorage.getItem('token_strava');

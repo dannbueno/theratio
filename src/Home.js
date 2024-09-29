@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { CLIENT_ID, REDIRECT_URI } from './Credentials';
+import { CLIENT_ID, REDIRECT_URI } from './Credentials.js';
 
 function Home() {
   const navigate = useNavigate();

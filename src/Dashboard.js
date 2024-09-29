@@ -7,7 +7,7 @@ import { getTotalTimeThisWeek, getRunningStatisticsThisWeek } from './stravaUtil
 import ActivityDetails from './ActivityDetail/ActivityDetails.js';
 import { refreshAccessToken, isTokenExpired } from './Home.js';
 
-export function Dashboard() {
+export default function Dashboard() {
     const [activities, setActivities] = useState([]);
     const [athlete, setAthlete] = useState({});
     const [selectedActivityId, setSelectedActivityId] = useState(null);

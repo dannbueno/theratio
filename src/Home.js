@@ -1,7 +1,9 @@
+// src/Home.js
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } from './Credentials.js';
 
+// Función para refrescar el token de acceso
 export async function refreshAccessToken() {
   const refreshToken = localStorage.getItem('refresh_token');
   if (!refreshToken) throw new Error('No refresh token found');
@@ -27,6 +29,14 @@ export async function refreshAccessToken() {
   }
 }
 
+// Función para verificar si el token ha expirado
+export function isTokenExpired() {
+  const tokenExpiration = localStorage.getItem('expires_at');
+  const currentTime = Math.floor(Date.now() / 1000);
+  return currentTime >= tokenExpiration;
+}
+
+// Componente Home para la autenticación inicial
 export default function Home() {
   const navigate = useNavigate();
 
@@ -52,4 +62,4 @@ export default function Home() {
       </div>
     </div>
   );
-};
+}

@@ -13,9 +13,10 @@ export default function Dashboard() {
     const [selectedActivityId, setSelectedActivityId] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const navigate = useNavigate();
+    const [dataFetched, setDataFetched] = useState(false); // Nuevo estado para evitar llamadas repetidas
 
     // Función para hacer logout
-    const handleLogout = () => {
+    const handleLogout = () => { //FIXME no está haciando logout a la primera
         localStorage.removeItem('token_strava');
         localStorage.removeItem('expires_at');
         navigate('/');
@@ -32,6 +33,8 @@ export default function Dashboard() {
     };
 
     useEffect(() => {
+        if (dataFetched) return; // Evitar llamadas repetidas si ya se han obtenido los datos
+
         async function fetchData() {
             let token = localStorage.getItem('token_strava');
 
@@ -48,7 +51,6 @@ export default function Dashboard() {
             }
 
             try {
-                // Limitar las solicitudes para evitar 429
                 const athleteRes = await fetch('https://www.strava.com/api/v3/athlete', {
                     headers: { 'Authorization': `Bearer ${token}` },
                 });
@@ -71,13 +73,15 @@ export default function Dashboard() {
                 const activitiesData = await activitiesRes.json();
                 setActivities(activitiesData);
 
+                setDataFetched(true); // Marcar como completado
+
             } catch (error) {
                 console.error('Error fetching athlete or activities:', error);
             }
         }
 
         fetchData();
-    }, [navigate]);
+    }, [dataFetched]);
 
 
     const totalTimeThisWeek = getTotalTimeThisWeek(activities);

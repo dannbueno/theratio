@@ -63,7 +63,7 @@ export default function Home() {
   }, [navigate]);
 
   const handleLogin = () => {
-    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=read,activity:read_all,activity:write`;
+    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all,activity:write`;
   };
 
   return (

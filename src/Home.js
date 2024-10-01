@@ -44,18 +44,18 @@ export default function Home() {
     async function checkAuthToken() {
       const token = localStorage.getItem('token_strava');
 
-      if (token) {
+      if (!token) {
+        return;
+      }
+
+      try {
         if (isTokenExpired()) {
-          try {
-            await refreshAccessToken();
-            navigate('/dashboard');
-          } catch (error) {
-            console.error('Error al refrescar el token:', error);
-            navigate('/home');
-          }
-        } else {
-          navigate('/dashboard');
+          await refreshAccessToken();
         }
+        navigate('/dashboard');
+      } catch (error) {
+        console.error('Error al renovar el token:', error);
+        navigate('/');
       }
     }
 
@@ -63,7 +63,7 @@ export default function Home() {
   }, [navigate]);
 
   const handleLogin = () => {
-    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all,activity:write`;
+    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}&scope=read,activity:read_all,activity:write`;
   };
 
   return (

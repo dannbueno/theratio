@@ -36,19 +36,23 @@ export function isTokenExpired() {
   return currentTime >= tokenExpiration;
 }
 
-// Componente Home para la autenticación inicial
 export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Verificar si hay un token en el localStorage
     const token = localStorage.getItem('token_strava');
-    if (token) {
+
+    if (token && !isTokenExpired()) {
       navigate('/dashboard');
+    } else if (token && isTokenExpired()) {
+      refreshAccessToken().then(() => navigate('/dashboard'));
     }
   }, [navigate]);
 
   const handleLogin = () => {
-    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all`;
+    // Asegurarse de que el `REDIRECT_URI` esté correctamente definido y registrado en la app de Strava
+    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all,activity:write`;
   };
 
   return (

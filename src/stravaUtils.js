@@ -122,6 +122,8 @@ export async function handleAddRatioToStrava(activityDetails) {
     const elevationRatio = calculateElevationRatio(activityDetails.total_elevation_gain, activityDetails.distance);
     const ratioText = `${elevationRatio} m+/km \nby: theratio / https://theratio.vercel.app`;
 
+    console.log('token: ' + token);
+
     if (!token || !activityDetails.id) return;
 
     try {

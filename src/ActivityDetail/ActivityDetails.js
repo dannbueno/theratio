@@ -108,13 +108,13 @@ function ActivityDetails({ activityId }) {
             </h2>
             <h4>Details</h4>
 
-            {activityDetails.type === 'WeightTraining' ? (
+            {activityDetails.sport_type === 'WeightTraining' ? (
                 <div className='details'>
                     <p>Duration: {secondsToTime(activityDetails.moving_time)} </p>
                     <p>Average Heart Rate: {activityDetails.average_heartrate} ppm </p>
                     <p>Calories: {activityDetails.calories} kCal </p>
                 </div>
-            ) : activityDetails.type === 'Ride' ? (
+            ) : activityDetails.sport_type === 'Ride' ? (
                 <div className='details'>
                     <p>Distance: {metersToKm(activityDetails.distance)} Km</p>
                     <p>Elevation: {activityDetails.total_elevation_gain} m+</p>
@@ -170,6 +170,8 @@ function ActivityDetails({ activityId }) {
                     <p>Average Heart Rate: {activityDetails.average_heartrate} ppm </p>
                     <p>Watts: {activityDetails.average_watts} W</p>
 
+                    <AltimetryChart activityStreamDistance={activityStreamDistance} activityStreamAltitude={activityStreamAltitude} activityStreamHeartRate={activityStreamHeartRate} />
+
                     {activityDetails.device_watts === true && (
                         <PowerHeartRateChart
                             activityStreamPower={activityStreamPower}
@@ -201,6 +203,43 @@ function ActivityDetails({ activityId }) {
                         </>
                     )}
                 </div>
+            ) : activityDetails.sport_type === 'TrailRun' ? (
+                <div className='details'>
+                    <p>Distance: {metersToKm(activityDetails.distance)} Km</p>
+                    <p>Elevation: {activityDetails.total_elevation_gain} m+</p>
+                    <p>Duration: {secondsToTime(activityDetails.moving_time)} </p>
+                    <p>Pace: {metersPerSecondToPace(activityDetails.average_speed)} /km</p>
+                    <p>Cadence: {activityDetails.average_cadence.toFixed(0)} spm</p>
+                    <p>Average Heart Rate: {activityDetails.average_heartrate} ppm </p>
+                    <p>Watts: {activityDetails.average_watts} W</p>
+                    <p>Elevation ratio: {calculateElevationRatio(activityDetails.total_elevation_gain, activityDetails.distance)} m+/km</p>
+                    <button onClick={() => handleAddRatioToStrava(activityDetails)}>Add Ratio to Strava</button>
+
+                    <AltimetryChart activityStreamDistance={activityStreamDistance} activityStreamAltitude={activityStreamAltitude} activityStreamHeartRate={activityStreamHeartRate} />
+
+                    {activityStreamHeartRate.length && activityStreamCadence.length && activityStreamDistance.length && activityStreamTime.length ? (
+                        <HeartRateCadencePaceChart
+                            activityStreamPower={activityStreamPower}
+                            activityStreamHeartRate={activityStreamHeartRate}
+                            activityStreamCadence={activityStreamCadence}
+                            activityStreamTime={activityStreamTime}
+                            activityStreamDistance={activityStreamDistance}
+                            sportType={activityDetails.type} // This determines whether it's Run or Ride
+                        />
+
+                    ) : null}
+
+                    <h4>Activity Heart Rate Zones</h4>
+                    {activityZones[0] && (
+                        <>
+                            <p>Time in Zone 1 ({activityZones[0]?.distribution_buckets[0]?.min} - {activityZones[0]?.distribution_buckets[0]?.max}): {secondsToTime(activityZones[0]?.distribution_buckets[0]?.time)}</p>
+                            <p>Time in Zone 2 ({activityZones[0]?.distribution_buckets[1]?.min} - {activityZones[0]?.distribution_buckets[1]?.max}): {secondsToTime(activityZones[0]?.distribution_buckets[1]?.time)}</p>
+                            <p>Time in Zone 3 ({activityZones[0]?.distribution_buckets[2]?.min} - {activityZones[0]?.distribution_buckets[2]?.max}): {secondsToTime(activityZones[0]?.distribution_buckets[2]?.time)}</p>
+                            <p>Time in Zone 4 ({activityZones[0]?.distribution_buckets[3]?.min} - {activityZones[0]?.distribution_buckets[3]?.max}): {secondsToTime(activityZones[0]?.distribution_buckets[3]?.time)}</p>
+                            <p>Time in Zone 5 ({activityZones[0]?.distribution_buckets[4]?.min} - {activityDetails.max_heartrate}): {secondsToTime(activityZones[0]?.distribution_buckets[4]?.time)}</p>
+                        </>
+                    )}
+                </div>
             ) : (
                 <div className='details'>
                     <p>Distance: {metersToKm(activityDetails.distance)} Km</p>
@@ -208,8 +247,6 @@ function ActivityDetails({ activityId }) {
                     <p>Duration: {secondsToTime(activityDetails.moving_time)} </p>
                     <p>Pace: {metersPerSecondToPace(activityDetails.average_speed)} /km</p>
                     <p>Average Heart Rate: {activityDetails.average_heartrate} ppm </p>
-                    <p>Elevation ratio: {calculateElevationRatio(activityDetails.total_elevation_gain, activityDetails.distance)} m+/km</p>
-                    <button onClick={() => handleAddRatioToStrava(activityDetails)}>Add Ratio to Strava</button>
                     <p>Watts: {activityDetails.average_watts} W</p>
 
                     {/* Gráfico de altimetría */}

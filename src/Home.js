@@ -2,7 +2,6 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } from './Credentials.js';
-import { isTokenExpired } from './utils.js'; // Asegúrate de importar las funciones necesarias
 
 // Función para refrescar el token de acceso
 export async function refreshAccessToken() {

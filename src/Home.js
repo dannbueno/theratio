@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CLIENT_ID, CLIENT_SECRET, REDIRECT_URI } from './Credentials.js';
+import { isTokenExpired } from './utils.js'; // Asegúrate de importar las funciones necesarias
 
 // Función para refrescar el token de acceso
 export async function refreshAccessToken() {
@@ -36,22 +37,33 @@ export function isTokenExpired() {
   return currentTime >= tokenExpiration;
 }
 
+
 export default function Home() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Verificar si hay un token en el localStorage
-    const token = localStorage.getItem('token_strava');
+    async function checkAuthToken() {
+      const token = localStorage.getItem('token_strava');
 
-    if (token && !isTokenExpired()) {
-      navigate('/dashboard');
-    } else if (token && isTokenExpired()) {
-      refreshAccessToken().then(() => navigate('/dashboard'));
+      if (token) {
+        if (isTokenExpired()) {
+          try {
+            await refreshAccessToken();
+            navigate('/dashboard');
+          } catch (error) {
+            console.error('Error al refrescar el token:', error);
+            navigate('/home');
+          }
+        } else {
+          navigate('/dashboard');
+        }
+      }
     }
+
+    checkAuthToken();
   }, [navigate]);
 
   const handleLogin = () => {
-    // Asegurarse de que el `REDIRECT_URI` esté correctamente definido y registrado en la app de Strava
     window.location.href = `https://www.strava.com/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&redirect_uri=${REDIRECT_URI}/redirect&scope=read,activity:read_all,activity:write`;
   };
 

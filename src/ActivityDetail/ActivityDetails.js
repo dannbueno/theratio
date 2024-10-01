@@ -247,18 +247,9 @@ function ActivityDetails({ activityId }) {
                     <p>Duration: {secondsToTime(activityDetails.moving_time)} </p>
                     <p>Pace: {metersPerSecondToPace(activityDetails.average_speed)} /km</p>
                     <p>Average Heart Rate: {activityDetails.average_heartrate} ppm </p>
-                    <p>Watts: {activityDetails.average_watts} W</p>
 
                     {/* Gráfico de altimetría */}
                     <AltimetryChart activityStreamDistance={activityStreamDistance} activityStreamAltitude={activityStreamAltitude} activityStreamHeartRate={activityStreamHeartRate} />
-
-                    <HeartRateCadencePaceChart
-                        activityStreamHeartRate={activityStreamHeartRate}
-                        activityStreamCadence={activityStreamCadence}
-                        activityStreamTime={activityStreamTime}
-                        activityStreamDistance={activityStreamDistance}
-                        sportType={activityDetails.type}
-                    />
 
                     <h4>Activity Heart Rate Zones</h4>
                     {activityZones[0] && (

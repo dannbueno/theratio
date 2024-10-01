@@ -142,9 +142,10 @@ export async function handleAddRatioToStrava(activityDetails) {
         const updatedActivity = await updatedActivityResponse.json();
 
         // Verificar si ya existe el ratio en la descripción actualizada
-        if (updatedActivity.description && updatedActivity.description.includes(ratioText)) {
+        const ratioTextExpect = 'by: theratio / '
+        if (updatedActivity.description && updatedActivity.description.includes(ratioTextExpect)) {
             console.log(updatedActivity.description)
-            alert('Elevation ratio already exists in the description.');
+            alert('Elevation ratio already exists in the description: \n' + updatedActivity.description);
             return;
         }
 

@@ -1,0 +1,6 @@
+{
+  "/api/auth/strava/callback/route": "app/api/auth/strava/callback/route.js",
+  "/api/auth/strava/route": "app/api/auth/strava/route.js",
+  "/page": "app/page.js",
+  "/dashboard/page": "app/dashboard/page.js"
+}

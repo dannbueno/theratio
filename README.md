@@ -1,70 +1,93 @@
-# Getting Started with Create React App
+# TheRatio - Calculadora de ratio elevación/distancia para Strava
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+TheRatio es una aplicación web que se integra con Strava para calcular automáticamente la proporción entre el desnivel positivo y la distancia (metros de elevación por kilómetro) para actividades de tipo TrailRun.
 
-## Available Scripts
+## Características
 
-In the project directory, you can run:
+- Autenticación con OAuth de Strava
+- Visualización de actividades del usuario
+- Cálculo automático del ratio elevación/distancia para actividades de TrailRun
+- Webhook para procesar nuevas actividades automáticamente
+- Añade comentarios automáticos a actividades que superen un umbral de ratio
 
-### `npm start`
+## Configuración
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Prerrequisitos
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Node.js 18+ y npm/yarn
+- Una cuenta de Strava
+- Una aplicación creada en la [API de Strava](https://www.strava.com/settings/api)
 
-### `npm test`
+### Variables de entorno
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+Crea un archivo `.env.local` en la raíz del proyecto con las siguientes variables:
 
-### `npm run build`
+```
+STRAVA_CLIENT_ID=tu_client_id
+STRAVA_CLIENT_SECRET=tu_client_secret
+STRAVA_VERIFY_TOKEN=token_aleatorio_para_verificar_webhook
+STRAVA_ACCESS_TOKEN=token_de_acceso_para_desarrollo
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Instalación
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Clona el repositorio:
+```bash
+git clone https://github.com/tuusuario/theratio.git
+cd theratio
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+2. Instala las dependencias:
+```bash
+npm install
+# o
+yarn install
+```
 
-### `npm run eject`
+3. Ejecuta el servidor de desarrollo:
+```bash
+npm run dev
+# o
+yarn dev
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+4. Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Configuración del Webhook de Strava
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Para recibir notificaciones automáticas cuando se creen nuevas actividades, necesitas configurar un webhook de Strava:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+1. Tu aplicación debe ser accesible desde Internet (usa ngrok u otro servicio similar para desarrollo)
+2. Registra el webhook en Strava:
+```bash
+curl -X POST https://www.strava.com/api/v3/push_subscriptions \
+  -F client_id=TU_CLIENT_ID \
+  -F client_secret=TU_CLIENT_SECRET \
+  -F callback_url=https://tu-dominio.com/api/strava/webhook \
+  -F verify_token=TU_TOKEN_DE_VERIFICACION
+```
 
-## Learn More
+## Despliegue en producción
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Para un despliegue en producción, recomendamos usar Vercel:
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+```bash
+npm install -g vercel
+vercel
+```
 
-### Code Splitting
+No olvides configurar las variables de entorno en tu proveedor de hosting.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Consideraciones de seguridad
 
-### Analyzing the Bundle Size
+En un entorno de producción, debes implementar:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+- Almacenamiento seguro de tokens de usuario en una base de datos
+- Renovación automática de tokens de acceso caducados
+- HTTPS para todas las comunicaciones
+- Validación de la firma de los webhooks
 
-### Making a Progressive Web App
+## Licencia
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Este proyecto está bajo la licencia MIT.

@@ -1,5 +1,4 @@
 {
-  "outputDirectory": ".next",
   "routes": [
     { "src": "/api/auth/strava/callback(.*)", "dest": "/api/auth/strava/callback" },
     { "src": "/api/auth/strava(.*)", "dest": "/api/auth/strava" },

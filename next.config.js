@@ -3,15 +3,7 @@ const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
   output: 'standalone',
-  // Asegúrate de que las rutas de la API funcionen correctamente
-  rewrites: async () => {
-    return [
-      {
-        source: '/',
-        destination: '/app/page.js',
-      },
-    ];
-  },
+  // No es necesario el rewrite para la página principal en App Router
 };
 
 module.exports = nextConfig; 

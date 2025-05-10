@@ -1,5 +1,8 @@
 import { NextResponse } from 'next/server';
 
+// Exportar como dinámica explícitamente
+export const dynamic = 'force-dynamic';
+
 // Constantes
 const METERS_TO_KM = 0.001;
 const MIN_RATIO_FOR_COMMENT = 10; // Umbral mínimo para comentar

@@ -1,17 +1,20 @@
 import { NextResponse } from 'next/server';
 
+// Exportar como dinámica explícitamente
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
-  // Obtener el código de autorización de los parámetros de URL
-  const { searchParams } = new URL(request.url);
-  const code = searchParams.get('code');
-  const error = searchParams.get('error');
-
-  // Si hay un error o no hay código, redirigir a la página principal con un mensaje de error
-  if (error || !code) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}?error=authentication_failed`);
-  }
-
   try {
+    // Obtener el código de autorización de los parámetros de URL
+    const url = new URL(request.url);
+    const code = url.searchParams.get('code');
+    const error = url.searchParams.get('error');
+
+    // Si hay un error o no hay código, redirigir a la página principal con un mensaje de error
+    if (error || !code) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}?error=authentication_failed`);
+    }
+
     // Intercambiar el código por un token de acceso
     const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
       method: 'POST',

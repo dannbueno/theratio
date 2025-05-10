@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function Dashboard() {
+function DashboardContent() {
   const searchParams = useSearchParams();
   const [activities, setActivities] = useState([]);
   const [athleteName, setAthleteName] = useState('');
@@ -552,5 +552,17 @@ export default function Dashboard() {
         {showSummary && <SummaryModal onClose={() => setShowSummary(false)} tab={summaryTab} setTab={setSummaryTab} />}
       </div>
     </main>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-neutral-900">
+        <div className="text-xl text-white font-medium">Cargando...</div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
   );
 } 

@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "export": "next export",
     "start": "next start",
     "lint": "next lint"
   },
@@ -15,7 +14,6 @@
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@netlify/plugin-nextjs": "^5.11.1",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.4",

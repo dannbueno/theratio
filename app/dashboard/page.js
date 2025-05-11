@@ -1,7 +1,122 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import html2canvas from 'html2canvas';
+import dynamic from 'next/dynamic';
+
+// Importar Chart.js para los gráficos
+import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend } from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Registrar componentes de Chart.js
+ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
+
+// Cargar el componente del mapa dinámicamente (sin SSR)
+const MapComponent = dynamic(() => import('../../components/MapComponent'), { 
+  ssr: false,
+  loading: () => <div className="h-[400px] bg-neutral-800 flex items-center justify-center">Cargando mapa...</div>
+});
+
+// Componente de gráfico de altimetría
+const AltimetryChart = ({ activityStreamDistance, activityStreamAltitude, activityStreamHeartRate }) => {
+  if (!activityStreamDistance?.length || !activityStreamAltitude?.length) {
+    return <div className="h-[300px] bg-neutral-800 flex items-center justify-center">No hay datos de altimetría disponibles</div>;
+  }
+
+  const data = {
+    labels: activityStreamDistance.map(distance => (distance / 1000).toFixed(1)), // Convertir distancia a kilómetros
+    datasets: [
+      {
+        label: 'Altitud (m)',
+        data: activityStreamAltitude,
+        borderColor: 'rgba(75,192,192,1)', // Color azul para altimetría
+        fill: false,
+        tension: 0,
+        borderWidth: 1,
+        pointRadius: 0,
+        yAxisID: 'y1', // Asociar con el primer eje Y (altitud)
+      },
+      {
+        label: 'Frecuencia cardíaca (ppm)',
+        data: activityStreamHeartRate,
+        borderColor: 'rgba(255,99,132,1)', // Color rojo para frecuencia cardíaca
+        fill: false,
+        tension: 0,
+        borderWidth: 1,
+        pointRadius: 0,
+        yAxisID: 'y2', // Asociar con el segundo eje Y (FC)
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          color: '#fff'
+        }
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Distancia (km)',
+          color: '#fff'
+        },
+        ticks: {
+          color: '#ccc'
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        }
+      },
+      y1: {
+        type: 'linear',
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Altitud (m)',
+          color: '#fff'
+        },
+        beginAtZero: false,
+        ticks: {
+          color: '#ccc'
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        }
+      },
+      y2: {
+        type: 'linear',
+        position: 'right',
+        title: {
+          display: true,
+          text: 'Frecuencia Cardíaca (ppm)',
+          color: '#fff'
+        },
+        beginAtZero: false,
+        ticks: {
+          color: '#ccc'
+        },
+        grid: {
+          drawOnChartArea: false,
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+      },
+    },
+  };
+
+  return (
+    <div className="bg-neutral-800 p-4 rounded-lg">
+      <Line data={data} options={options} />
+    </div>
+  );
+};
 
 function DashboardContent() {
   const searchParams = useSearchParams();
@@ -45,6 +160,7 @@ function DashboardContent() {
     average_cadence: 'Cadencia media',
     average_watts: 'Potencia media',
     max_watts: 'Potencia máxima',
+    weighted_average_watts: 'Potencia media ponderada',
     elev_high: 'Altitud máxima',
     elev_low: 'Altitud mínima',
     start_latitude: 'Latitud inicio',
@@ -87,6 +203,10 @@ function DashboardContent() {
     const m = Math.floor((seconds % 3600) / 60);
     const s = seconds % 60;
     const pad = (n) => n.toString().padStart(2, '0');
+    
+    if (h === 0) {
+      return `${pad(m)}:${pad(s)}`;
+    }
     return `${pad(h)}:${pad(m)}:${pad(s)}`;
   };
 
@@ -228,7 +348,155 @@ function DashboardContent() {
 
   // Modal component
   const ActivityModal = ({ activity, onClose }) => {
+    const modalRef = useRef(null);
+    const [isTakingScreenshot, setIsTakingScreenshot] = useState(false);
+    const [showCopyNotification, setShowCopyNotification] = useState(false);
+    const [activeTab, setActiveTab] = useState('datos');
+    const [activityStreams, setActivityStreams] = useState({
+      polyline: [],
+      distance: [],
+      altitude: [],
+      heartrate: [],
+      time: []
+    });
+    const [loading, setLoading] = useState(false);
+    const token = searchParams.get('token');
+    
+    // Cerrar modal con la tecla ESC
+    useEffect(() => {
+      const handleEscKey = (event) => {
+        if (event.key === 'Escape') {
+          onClose();
+        }
+      };
+      
+      window.addEventListener('keydown', handleEscKey);
+      
+      return () => {
+        window.removeEventListener('keydown', handleEscKey);
+      };
+    }, [onClose]);
+    
+    // Cargar streams de datos cuando el usuario cambia a la pestaña de mapa o gráficos
+    useEffect(() => {
+      // Solo cargar si estamos en el cliente, en la pestaña de mapa o gráficos y no tenemos datos
+      if (
+        typeof window !== 'undefined' && 
+        (activeTab === 'mapa' || activeTab === 'graficos') && 
+        activityStreams.polyline.length === 0 && 
+        !loading && 
+        activity && 
+        token
+      ) {
+        const fetchActivityStreams = async () => {
+          setLoading(true);
+          try {
+            // Obtener datos del polilinea y otros streams
+            const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=latlng,distance,altitude,heartrate,time&key_by_type=true`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to fetch activity streams');
+            }
+            
+            const data = await response.json();
+            
+            // Preparar los datos para el mapa y los gráficos
+            setActivityStreams({
+              polyline: data.latlng ? data.latlng.data : [],
+              distance: data.distance ? data.distance.data : [],
+              altitude: data.altitude ? data.altitude.data : [],
+              heartrate: data.heartrate ? data.heartrate.data : [],
+              time: data.time ? data.time.data : []
+            });
+          } catch (error) {
+            console.error('Error fetching activity streams:', error);
+            // Establecer un array vacío en caso de error
+            setActivityStreams({
+              polyline: [],
+              distance: [],
+              altitude: [],
+              heartrate: [],
+              time: []
+            });
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        fetchActivityStreams();
+      }
+    }, [activeTab, activityStreams.polyline.length, loading, activity, token]);
+    
     if (!activity) return null;
+    
+    const takeScreenshot = async () => {
+      if (!modalRef.current) return;
+      
+      try {
+        setIsTakingScreenshot(true);
+        
+        const modalContent = modalRef.current;
+        const canvas = await html2canvas(modalContent, {
+          backgroundColor: '#171717', // color negro para el fondo
+          scale: 2, // mejor calidad
+          logging: false
+        });
+        
+        // Preparar la imagen para descarga
+        const imageData = canvas.toDataURL('image/png');
+        
+        try {
+          // Intentar copiar al portapapeles
+          if (navigator.clipboard && window.ClipboardItem) {
+            // Obtener el blob para el portapapeles
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+            
+            try {
+              await navigator.clipboard.write([
+                new ClipboardItem({
+                  [blob.type]: blob
+                })
+              ]);
+              // Mostrar notificación
+              setShowCopyNotification(true);
+              setTimeout(() => setShowCopyNotification(false), 2000);
+            } catch (clipboardError) {
+              console.error('Error al copiar al portapapeles:', clipboardError);
+              // Si falla la copia, ofrecer descarga
+              offerDownload(imageData);
+            }
+          } else {
+            // Si no hay soporte para clipboard API, ofrecer descarga
+            offerDownload(imageData);
+          }
+        } catch (err) {
+          console.error('Error general:', err);
+          offerDownload(imageData);
+        }
+      } catch (error) {
+        console.error('Error al capturar la pantalla:', error);
+      } finally {
+        setIsTakingScreenshot(false);
+      }
+    };
+    
+    // Función para ofrecer descarga cuando el portapapeles falla
+    const offerDownload = (dataUrl) => {
+      const fileName = `${activity.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_${new Date().toISOString().split('T')[0]}.png`;
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Mostrar mensaje
+      setShowCopyNotification(true);
+      setTimeout(() => setShowCopyNotification(false), 2000);
+    };
+    
     // Lista de claves a ocultar
     const hiddenFields = [
       'id', 'start_date_local', 'timezone', 'utc_offset', 'location_city', 'location_state', 'location_country',
@@ -238,8 +506,70 @@ function DashboardContent() {
       'resource_state', 'athlete',
       'workout_type', 'kudos_count', 'comment_count', 'athlete_count', 'photo_count', 'map',
       'type',
-      'has_heartrate', 'kilojoules'
+      'has_heartrate', 'kilojoules',
+      // Ocultar campos redundantes que ya se muestran en la cabecera
+      'name', 'start_date',
+      // Ocultar sport_type ya que lo mostraremos en la cabecera
+      'sport_type'
     ];
+    
+    // Orden preferido de los campos
+    const fieldOrder = [
+      // Datos principales (alta prioridad)
+      'distance',
+      'moving_time',
+      'elapsed_time',
+      'total_elevation_gain',
+      'average_speed',
+      'max_speed',
+      'average_heartrate',
+      'max_heartrate',
+      // Datos secundarios
+      'average_cadence',
+      'average_watts',
+      'max_watts',
+      'weighted_average_watts',
+      'suffer_score',
+      'calories',
+      'average_temp',
+      'elev_high',
+      'elev_low',
+      // Datos menos relevantes
+      'start_latitude',
+      'start_longitude',
+      'end_latitude',
+      'end_longitude',
+    ];
+    
+    // Agrupar campos por categorías
+    const fieldGroups = {
+      primary: ['distance', 'moving_time', 'elapsed_time', 'total_elevation_gain'],
+      performance: ['average_speed', 'max_speed', 'average_heartrate', 'max_heartrate', 'average_cadence'],
+      secondary: ['average_watts', 'weighted_average_watts', 'max_watts'],
+      elevation: ['elev_high', 'elev_low', 'suffer_score', 'average_temp', 'calories'],
+      coordinates: ['start_latitude', 'start_longitude', 'end_latitude', 'end_longitude']
+    };
+    
+    // Diccionario de unidades por campo
+    const fieldUnits = {
+      total_elevation_gain: 'm',
+      average_watts: 'W',
+      weighted_average_watts: 'W',
+      max_watts: 'W',
+      calories: 'kcal',
+      average_heartrate: 'ppm',
+      max_heartrate: 'ppm',
+      average_cadence: 'rpm',
+      average_temp: '°C',
+      elev_high: 'm',
+      elev_low: 'm',
+      suffer_score: 'pts',
+      start_latitude: '°',
+      start_longitude: '°',
+      end_latitude: '°',
+      end_longitude: '°'
+    };
+    
     // Helper para detectar y formatear fechas ISO
     const isIsoDate = (val) => typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val);
     const formatDateField = (val) => {
@@ -247,62 +577,266 @@ function DashboardContent() {
       const pad = (n) => n.toString().padStart(2, '0');
       return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
     };
+    
+    // Función para formatear valor con unidades
+    const formatValueWithUnit = (key, value) => {
+      if (value === null || value === undefined) return '—';
+      
+      if (key === 'sport_type') return sportTypeLabels[value] || value;
+      if (key === 'distance') return formatDistance(value);
+      if (key === 'moving_time' || key === 'elapsed_time') return formatHMS(value);
+      
+      if (key === 'average_speed' && (activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
+        return formatPace(value);
+      }
+      if (key === 'max_speed' && (activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
+        return formatPace(value);
+      }
+      if (key === 'average_speed' && !(activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
+        return `${formatSpeedShort(value)} km/h`;
+      }
+      if (key === 'max_speed' && !(activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
+        return `${formatSpeedShort(value)} km/h`;
+      }
+      
+      if (isIsoDate(value)) return formatDateField(value);
+      
+      // Añadir unidades para valores numéricos
+      if (typeof value === 'number' && fieldUnits[key]) {
+        // Valores que se muestran sin decimales (números enteros)
+        if ([
+          'average_heartrate', 
+          'max_heartrate', 
+          'suffer_score', 
+          'calories',
+          'average_cadence',
+          'total_elevation_gain',
+          'average_watts',
+          'weighted_average_watts',
+          'max_watts',
+          'elev_high',
+          'elev_low',
+          'average_temp'
+        ].includes(key)) {
+          return `${Math.round(value)} ${fieldUnits[key]}`;
+        }
+        
+        // Por defecto, mostrar con 1 decimal para otros valores numéricos
+        return `${value.toFixed(1)} ${fieldUnits[key]}`;
+      }
+      
+      // Para otros valores
+      if (typeof value === 'object' && value !== null) {
+        return Array.isArray(value) 
+          ? `Array (${value.length})`
+          : value.id 
+            ? `ID: ${value.id}` 
+            : 'Ver detalles';
+      }
+      
+      return value.toString();
+    };
+    
+    // Renderizar un campo individual
+    const renderField = (key) => {
+      if (!activity[key] && activity[key] !== 0) return null;
+      return (
+        <div key={key} className="border border-neutral-800 rounded-lg py-1.5 px-3 inline-flex flex-col">
+          <span className="text-neutral-400 text-xs">{getFieldLabel(key, activity.sport_type)}</span>
+          <span className="text-white font-semibold mt-0.5">
+            {formatValueWithUnit(key, activity[key])}
+          </span>
+        </div>
+      );
+    };
+    
+    // Organizar campos en las secciones disponibles
+    const availableFields = fieldOrder.filter(key => 
+      activity[key] !== undefined && 
+      !hiddenFields.includes(key)
+    );
+    
+    // Campos adicionales que no están en el orden predefinido
+    const extraFields = Object.keys(activity)
+      .filter(key => 
+        !hiddenFields.includes(key) && 
+        !fieldOrder.includes(key) && 
+        activity[key] !== undefined
+      );
+    
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
         <div
-          className="bg-neutral-900 rounded-2xl shadow-2xl p-8 max-w-lg w-full relative text-white"
+          className="bg-neutral-900 rounded-2xl shadow-2xl p-5 max-w-2xl min-w-[300px] w-auto relative text-white max-h-[90vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
+          ref={modalRef}
         >
-          <button
-            className="absolute top-4 right-4 text-2xl text-neutral-400 hover:text-white focus:outline-none"
-            onClick={onClose}
-            aria-label="Cerrar"
-          >
-            ×
-          </button>
-          <div className="flex items-center gap-3 mb-4">
-            <span className="text-3xl">{getIcon(activity.type)}</span>
-            <h2 className="text-2xl font-bold">{activity.name}</h2>
-          </div>
-          <div className="text-neutral-400 text-sm mb-6">{formatDate(activity.start_date)}</div>
-          <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
-            {Object.entries(activity)
-              .filter(([key]) => !hiddenFields.includes(key))
-              .map(([key, value]) => (
-                <div key={key} className="flex justify-between border-b border-neutral-800 py-1 text-sm">
-                  <span className="capitalize text-neutral-400">{getFieldLabel(key, activity.sport_type)}</span>
-                  <span className="text-white font-medium">
-                    {typeof value === 'object' && value !== null
-                      ? Array.isArray(value)
-                        ? `Array (${value.length})`
-                        : value.id
-                          ? `ID: ${value.id}`
-                          : 'Ver detalles'
-                      : key === 'sport_type'
-                        ? (sportTypeLabels[value] || value)
-                        : key === 'distance'
-                          ? formatDistance(value)
-                          : (key === 'moving_time' || key === 'elapsed_time')
-                            ? formatHMS(value)
-                            : key === 'average_speed' && (activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')
-                              ? formatPace(value)
-                              : key === 'max_speed' && (activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')
-                                ? formatPace(value)
-                                : isIsoDate(value)
-                                  ? formatDateField(value)
-                                  : (value === null || value === undefined)
-                                    ? '—'
-                                    : value.toString()}
-                  </span>
+          <div className="flex justify-between items-center mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{getIcon(activity.type)}</span>
+              <div>
+                <h2 className="text-xl font-bold">{activity.name}</h2>
+                <div className="flex items-center text-neutral-400 text-sm gap-1">
+                  <span>{formatDate(activity.start_date)}</span>
+                  <span className="text-neutral-300 mx-1">•</span>
+                  <span className="text-orange-400 font-medium">{sportTypeLabels[activity.sport_type] || activity.sport_type}</span>
                 </div>
-              ))}
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                className="text-neutral-300 hover:text-white text-xl flex items-center justify-center focus:outline-none"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  takeScreenshot();
+                }}
+                disabled={isTakingScreenshot}
+                aria-label="Capturar pantalla"
+              >
+                {isTakingScreenshot ? '⏳' : '📷'}
+              </button>
+              <button
+                className="text-2xl text-neutral-400 hover:text-white focus:outline-none"
+                onClick={onClose}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+          
+          {showCopyNotification && (
+            <div className="absolute top-12 right-12 mt-1 bg-green-800 text-white text-xs py-1 px-2 rounded whitespace-nowrap">
+              Imagen guardada
+            </div>
+          )}
+          
+          {/* Ratio de elevación destacado para actividades TrailRun */}
+          {activity.sport_type === 'TrailRun' && (
+            <div className="mb-3 p-2 bg-gradient-to-r from-orange-900/40 to-transparent border border-orange-800/50 rounded-lg">
+              <div className="text-xs text-neutral-300">Ratio de desnivel</div>
+              <div className="text-orange-400 font-bold text-lg">
+                {formatElevationRatio(activity.total_elevation_gain, activity.distance)} m+/km
+              </div>
+            </div>
+          )}
+          
+          {/* Pestañas de navegación */}
+          <div className="flex border-b border-neutral-700 mb-4">
+            <button
+              className={`px-4 py-2 font-medium text-sm ${activeTab === 'datos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              onClick={() => setActiveTab('datos')}
+            >
+              Datos
+            </button>
+            <button
+              className={`px-4 py-2 font-medium text-sm ${activeTab === 'mapa' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              onClick={() => setActiveTab('mapa')}
+            >
+              Mapa
+            </button>
+            <button
+              className={`px-4 py-2 font-medium text-sm ${activeTab === 'graficos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              onClick={() => setActiveTab('graficos')}
+            >
+              Gráficos
+            </button>
+          </div>
+          
+          {/* Contenido de las pestañas con altura fija */}
+          <div className="min-h-[500px]">
+            {/* Pestaña de Datos */}
+            {activeTab === 'datos' && (
+              <>
+                {/* Estadísticas principales */}
+                <div className="mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {fieldGroups.primary.map(key => renderField(key))}
+                  </div>
+                </div>
+                
+                {/* Estadísticas de rendimiento */}
+                <div className="mb-4">
+                  <h3 className="text-sm text-neutral-400 mb-1">Rendimiento</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {fieldGroups.performance.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                  </div>
+                </div>
+                
+                {/* Estadísticas secundarias */}
+                {fieldGroups.secondary.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Potencia</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.secondary.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Altitud */}
+                {fieldGroups.elevation.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Otros</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.elevation.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Coordenadas */}
+                {fieldGroups.coordinates.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Coordenadas</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.coordinates.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Campos adicionales que no están en ningún grupo */}
+                {extraFields.length > 0 && (
+                  <div>
+                    <h3 className="text-sm text-neutral-400 mb-1">Datos adicionales</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {extraFields.map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
             
-            {activity.sport_type === 'TrailRun' && (
-              <div className="flex justify-between border-b border-neutral-800 py-1 text-sm">
-                <span className="capitalize text-neutral-400">Ratio de desnivel</span>
-                <span className="text-white font-medium">
-                  {formatElevationRatio(activity.total_elevation_gain, activity.distance)} m+/km
-                </span>
+            {/* Pestaña de Mapa */}
+            {activeTab === 'mapa' && (
+              <div className="h-full">
+                {loading ? (
+                  <div className="h-[400px] bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">Cargando mapa...</div>
+                  </div>
+                ) : (
+                  <MapComponent polyline={activityStreams.polyline} />
+                )}
+              </div>
+            )}
+            
+            {/* Pestaña de Gráficos */}
+            {activeTab === 'graficos' && (
+              <div className="h-full">
+                {loading ? (
+                  <div className="h-[400px] bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">Cargando gráficos...</div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm text-neutral-400 mb-2">Perfil de altitud</h3>
+                      <AltimetryChart 
+                        activityStreamDistance={activityStreams.distance} 
+                        activityStreamAltitude={activityStreams.altitude} 
+                        activityStreamHeartRate={activityStreams.heartrate} 
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -430,9 +964,9 @@ function DashboardContent() {
     );
   };
 
-  // Bloquear scroll del body cuando el modal de resumen está abierto
+  // Bloquear scroll del body cuando el modal de detalle o de resumen está abierto
   useEffect(() => {
-    if (showSummary) {
+    if (selectedActivity || showSummary) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = '';
@@ -440,7 +974,7 @@ function DashboardContent() {
     return () => {
       document.body.style.overflow = '';
     };
-  }, [showSummary]);
+  }, [selectedActivity, showSummary]);
 
   if (loading) {
     return (

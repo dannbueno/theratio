@@ -7,8 +7,12 @@ export const dynamic = 'force-dynamic';
 // Función para guardar la sesión del usuario
 async function saveSession(userData) {
   try {
+    console.log('Intentando guardar sesión para:', userData.athlete.id);
+    
     // Conectar a MongoDB
     const client = await clientPromise;
+    console.log('Conexión a MongoDB exitosa');
+    
     const db = client.db("theratio");
     const collection = db.collection("sessions");
     
@@ -20,13 +24,16 @@ async function saveSession(userData) {
       timestamp: new Date().toISOString(),
     };
     
+    console.log('Guardando sesión:', session);
+    
     // Actualizar o insertar la sesión (upsert)
-    await collection.updateOne(
+    const result = await collection.updateOne(
       { id: session.id },
       { $set: session },
       { upsert: true }
     );
     
+    console.log('Resultado de guardado:', result);
     console.log(`Sesión guardada para ${session.name}`);
     return true;
   } catch (error) {

@@ -1,12 +1,61 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 function HomeContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
+  
   const error = searchParams.get('error');
+  const code = searchParams.get('code');
   const [errorMessage, setErrorMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  // Manejar código de autorización recibido de Strava
+  useEffect(() => {
+    // Si recibimos un código de Strava, procesarlo
+    if (code) {
+      const processCode = async () => {
+        setLoading(true);
+        try {
+          console.log('Código recibido de Strava:', code);
+          
+          // Intercambiar el código por un token
+          const response = await fetch('https://www.strava.com/oauth/token', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              client_id: process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID || '129187',
+              client_secret: process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET,
+              code,
+              grant_type: 'authorization_code',
+            }),
+          });
+          
+          const data = await response.json();
+          console.log('Respuesta del token:', data);
+          
+          if (!response.ok) {
+            setErrorMessage(JSON.stringify(data));
+            setLoading(false);
+            return;
+          }
+          
+          // Redirigir al dashboard con el token
+          router.push(`/dashboard?token=${data.access_token}`);
+        } catch (err) {
+          console.error('Error procesando código:', err);
+          setErrorMessage('Error al procesar el código de autorización: ' + err.message);
+          setLoading(false);
+        }
+      };
+      
+      processCode();
+    }
+  }, [code, router]);
 
   useEffect(() => {
     if (error) {
@@ -29,6 +78,18 @@ function HomeContent() {
   const handleStravaAuth = () => {
     window.location.href = '/api/auth/strava';
   };
+
+  if (loading) {
+    return (
+      <main className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-neutral-800 rounded-2xl p-8 shadow-lg text-center">
+          <h1 className="text-2xl font-bold text-white mb-4">Conectando con Strava...</h1>
+          <p className="text-neutral-300 mb-6">Por favor espera mientras procesamos tu autorización</p>
+          <div className="w-12 h-12 border-t-2 border-orange-500 border-solid rounded-full animate-spin mx-auto"></div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-4">

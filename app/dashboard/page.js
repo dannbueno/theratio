@@ -13,7 +13,7 @@ import { Line } from 'react-chartjs-2';
 ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
 
 // Cargar el componente del mapa dinámicamente (sin SSR)
-const MapComponent = dynamic(() => import('../../components/MapComponent'), { 
+const MapComponent = dynamic(() => import('../components/MapComponent'), { 
   ssr: false,
   loading: () => <div className="h-[400px] bg-neutral-800 flex items-center justify-center">Cargando mapa...</div>
 });
@@ -533,10 +533,27 @@ function DashboardContent() {
       if (photoMedia.length <= 1) return;
       
       // Encontrar el índice actual
-      const currentIndex = photoMedia.findIndex(media => 
-        selectedImage.urls && media.urls && 
-        selectedImage.urls['1000'] === media.urls['1000']
-      );
+      let currentIndex = -1;
+      
+      if (selectedImageIndex >= 0 && selectedImageIndex < photoMedia.length) {
+        // Usar el índice que ya teníamos guardado
+        currentIndex = selectedImageIndex;
+      } else {
+        // Intentar encontrar la imagen por URL (método de respaldo)
+        currentIndex = photoMedia.findIndex(media => {
+          if (!selectedImage.urls || !media.urls) return false;
+          
+          // Comprobar cualquier tamaño de URL disponible
+          for (const size in selectedImage.urls) {
+            if (selectedImage.urls[size] === media.urls[size]) {
+              return true;
+            }
+          }
+          
+          // Si no hay coincidencia por URLs, comparar por URL directa
+          return selectedImage.url && media.url && selectedImage.url === media.url;
+        });
+      }
       
       if (currentIndex === -1) return;
       
@@ -547,12 +564,41 @@ function DashboardContent() {
       // Establecer nueva imagen seleccionada
       setSelectedImage(photoMedia[newIndex]);
       setSelectedImageIndex(newIndex);
+      
+      console.log(`Navegando de imagen ${currentIndex} a ${newIndex}. Total: ${photoMedia.length}`);
     };
     
     // Función para abrir el visor de imágenes
     const openImageViewer = (media, index) => {
-      setSelectedImage(media);
-      setSelectedImageIndex(index);
+      // Filtrar solo las fotos para asegurarnos de que el índice es correcto
+      const photoMedia = activityMedia.filter(media => media.type === 'photo');
+      
+      // Si se proporciona índice, usarlo
+      if (index !== undefined) {
+        setSelectedImage(media);
+        
+        // Verificar que el índice está dentro del rango de fotos
+        if (index >= 0 && index < photoMedia.length) {
+          setSelectedImageIndex(index);
+        } else {
+          // Encontrar el índice correcto si el proporcionado no es válido
+          const correctIndex = photoMedia.findIndex(m => 
+            (media.urls && m.urls && Object.keys(media.urls).some(size => media.urls[size] === m.urls[size])) ||
+            (media.url && m.url && media.url === m.url)
+          );
+          setSelectedImageIndex(correctIndex !== -1 ? correctIndex : 0);
+        }
+      } else {
+        // Si no se proporciona índice, buscar la imagen en el array
+        setSelectedImage(media);
+        const mediaIndex = photoMedia.findIndex(m => 
+          (media.urls && m.urls && Object.keys(media.urls).some(size => media.urls[size] === m.urls[size])) ||
+          (media.url && m.url && media.url === m.url)
+        );
+        setSelectedImageIndex(mediaIndex !== -1 ? mediaIndex : 0);
+      }
+      
+      console.log(`Abriendo imagen en índice ${selectedImageIndex}. Total fotos: ${photoMedia.length}`);
     };
     
     if (!activity) return null;
@@ -989,33 +1035,35 @@ function DashboardContent() {
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-2">
                           <h3 className="text-sm text-neutral-400">Contenido multimedia ({activityMedia.length})</h3>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2">
                           {activityMedia.map((media, index) => (
                             <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 hover:brightness-110 transition-all">
                               {media.type === 'photo' ? (
                                 <>
                                   <div 
-                                    className="cursor-pointer" 
+                                    className="cursor-pointer h-[320px] overflow-hidden" 
                                     onClick={() => openImageViewer(media, index)}
                                   >
+                                    {/* Imagen ajustada a altura óptima */}
                                     <img 
                                       src={media.urls ? (media.urls['600'] || media.urls['1000']) : media.url} 
                                       alt={`Foto ${index + 1} de la actividad`} 
-                                      className="w-full h-auto object-cover"
+                                      className="w-full h-full object-cover"
                                       loading="lazy"
                                     />
                                   </div>
                                   {media.caption && (
-                                    <div className="p-2 text-xs text-neutral-300">
+                                    <div className="p-1 text-xs text-neutral-300 truncate">
                                       {media.caption}
                                     </div>
                                   )}
                                 </>
                               ) : media.type === 'video' && (
-                                <div className="aspect-video">
+                                <div className="h-[320px] overflow-hidden">
+                                  {/* Video ajustado a altura óptima */}
                                   {media.url.includes('youtube') ? (
                                     <iframe
                                       src={media.url.replace('watch?v=', 'embed/')}
@@ -1030,14 +1078,14 @@ function DashboardContent() {
                                         href={media.url} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                                        className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
                                       >
                                         Ver video
                                       </a>
                                     </div>
                                   )}
                                   {media.caption && (
-                                    <div className="p-2 text-xs text-neutral-300">
+                                    <div className="p-1 text-xs text-neutral-300 truncate">
                                       {media.caption}
                                     </div>
                                   )}
@@ -1057,10 +1105,13 @@ function DashboardContent() {
           {/* Visor de imágenes a pantalla completa */}
           {selectedImage && (
             <div 
-              className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+              className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center cursor-pointer"
               onClick={() => setSelectedImage(null)}
             >
-              <div className="relative max-w-[90vw] max-h-[90vh]">
+              <div 
+                className="relative max-w-[90vw] max-h-[90vh]"
+                onClick={(e) => e.stopPropagation()}
+              >
                 <img 
                   src={selectedImage.urls ? (selectedImage.urls['1000'] || selectedImage.urls['600']) : selectedImage.url} 
                   alt="Foto de la actividad" 
@@ -1085,26 +1136,28 @@ function DashboardContent() {
                 {activityMedia.filter(m => m.type === 'photo').length > 1 && (
                   <>
                     <button 
-                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none"
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none z-50 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         navigateImages(-1);
                       }}
                     >
-                      <span className="text-2xl">&lsaquo;</span>
+                      <span className="text-3xl">&lsaquo;</span>
                     </button>
                     <button 
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none z-50 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
+                        e.preventDefault();
                         navigateImages(1);
                       }}
                     >
-                      <span className="text-2xl">&rsaquo;</span>
+                      <span className="text-3xl">&rsaquo;</span>
                     </button>
                     
                     {/* Indicador de imagen actual */}
-                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 px-3 py-1 rounded-full text-white text-sm">
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 px-3 py-1 rounded-full text-white text-sm z-50">
                       {selectedImageIndex + 1} / {activityMedia.filter(m => m.type === 'photo').length}
                     </div>
                   </>

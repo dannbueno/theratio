@@ -52,7 +52,7 @@ const MapContent = ({ polyline }) => {
   // Si no hay datos de ruta, mostrar mensaje
   if (!polyline || polyline.length === 0) {
     return (
-      <div className="h-[400px] bg-neutral-800 flex items-center justify-center text-neutral-400">
+      <div className="h-full bg-neutral-800 flex items-center justify-center text-neutral-400">
         No hay datos de ruta disponibles para esta actividad
       </div>
     );
@@ -69,7 +69,7 @@ const MapContent = ({ polyline }) => {
   ];
 
   return (
-    <div className="h-[400px] w-full rounded-lg overflow-hidden">
+    <div className="h-full w-full rounded-lg overflow-hidden">
       <MapContainer
         center={initialCenter}
         zoom={13}
@@ -99,7 +99,7 @@ export default function MapComponent({ polyline }) {
   // Si no hay datos o no estamos en el cliente, mostrar placeholder
   if (typeof window === 'undefined' || !polyline || polyline.length === 0) {
     return (
-      <div className="h-[400px] bg-neutral-800 flex items-center justify-center text-neutral-400">
+      <div className="h-full bg-neutral-800 flex items-center justify-center text-neutral-400">
         {typeof window === 'undefined' ? 'Cargando mapa...' : 'No hay datos de ruta disponibles'}
       </div>
     );

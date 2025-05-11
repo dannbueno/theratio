@@ -21,7 +21,7 @@ const MapComponent = dynamic(() => import('../../components/MapComponent'), {
 // Componente de gráfico de altimetría
 const AltimetryChart = ({ activityStreamDistance, activityStreamAltitude, activityStreamHeartRate }) => {
   if (!activityStreamDistance?.length || !activityStreamAltitude?.length) {
-    return <div className="h-[300px] bg-neutral-800 flex items-center justify-center">No hay datos de altimetría disponibles</div>;
+    return <div className="h-full w-full bg-neutral-800 flex items-center justify-center">No hay datos de altimetría disponibles</div>;
   }
 
   const data = {
@@ -667,7 +667,7 @@ function DashboardContent() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
         <div
-          className="bg-neutral-900 rounded-2xl shadow-2xl p-5 max-w-2xl min-w-[300px] w-auto relative text-white max-h-[90vh] overflow-y-auto"
+          className="bg-neutral-900 rounded-2xl shadow-2xl p-5 max-w-4xl w-[620px] relative text-white max-h-[90vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
           ref={modalRef}
         >
@@ -743,8 +743,8 @@ function DashboardContent() {
             </button>
           </div>
           
-          {/* Contenido de las pestañas con altura fija */}
-          <div className="min-h-[500px]">
+          {/* Contenido de las pestañas con ancho y altura fijos */}
+          <div className="h-[360px] w-full overflow-y-auto">
             {/* Pestaña de Datos */}
             {activeTab === 'datos' && (
               <>
@@ -805,11 +805,11 @@ function DashboardContent() {
               </>
             )}
             
-            {/* Pestaña de Mapa */}
+            {/* Pestaña de Mapa - manteniendo el mismo ancho y altura */}
             {activeTab === 'mapa' && (
-              <div className="h-full">
+              <div className="h-full w-full">
                 {loading ? (
-                  <div className="h-[400px] bg-neutral-800 flex items-center justify-center">
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
                     <div className="text-neutral-400">Cargando mapa...</div>
                   </div>
                 ) : (
@@ -818,17 +818,17 @@ function DashboardContent() {
               </div>
             )}
             
-            {/* Pestaña de Gráficos */}
+            {/* Pestaña de Gráficos - manteniendo el mismo ancho y altura */}
             {activeTab === 'graficos' && (
-              <div className="h-full">
+              <div className="h-full w-full">
                 {loading ? (
-                  <div className="h-[400px] bg-neutral-800 flex items-center justify-center">
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
                     <div className="text-neutral-400">Cargando gráficos...</div>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-sm text-neutral-400 mb-2">Perfil de altitud</h3>
+                  <div className="h-full w-full">
+                    <h3 className="text-sm text-neutral-400 mb-2">Perfil de altitud</h3>
+                    <div className="h-[calc(100%-30px)] w-full">
                       <AltimetryChart 
                         activityStreamDistance={activityStreams.distance} 
                         activityStreamAltitude={activityStreams.altitude} 

@@ -1035,33 +1035,33 @@ function DashboardContent() {
                       </div>
                     ) : (
                       <>
-                        <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center justify-between mb-2">
                           <h3 className="text-sm text-neutral-400">Contenido multimedia ({activityMedia.length})</h3>
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="grid grid-cols-2 gap-2">
                           {activityMedia.map((media, index) => (
                             <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 hover:brightness-110 transition-all">
                               {media.type === 'photo' ? (
                                 <>
                                   <div 
-                                    className="cursor-pointer" 
+                                    className="cursor-pointer h-[320px] overflow-hidden" 
                                     onClick={() => openImageViewer(media, index)}
                                   >
                                     <img 
                                       src={media.urls ? (media.urls['600'] || media.urls['1000']) : media.url} 
                                       alt={`Foto ${index + 1} de la actividad`} 
-                                      className="w-full h-auto object-cover"
+                                      className="w-full h-full object-cover"
                                       loading="lazy"
                                     />
                                   </div>
                                   {media.caption && (
-                                    <div className="p-2 text-xs text-neutral-300">
+                                    <div className="p-1 text-xs text-neutral-300 truncate">
                                       {media.caption}
                                     </div>
                                   )}
                                 </>
                               ) : media.type === 'video' && (
-                                <div className="aspect-video">
+                                <div className="h-[160px] overflow-hidden">
                                   {media.url.includes('youtube') ? (
                                     <iframe
                                       src={media.url.replace('watch?v=', 'embed/')}
@@ -1076,14 +1076,14 @@ function DashboardContent() {
                                         href={media.url} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                                        className="px-3 py-1 text-sm bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
                                       >
                                         Ver video
                                       </a>
                                     </div>
                                   )}
                                   {media.caption && (
-                                    <div className="p-2 text-xs text-neutral-300">
+                                    <div className="p-1 text-xs text-neutral-300 truncate">
                                       {media.caption}
                                     </div>
                                   )}

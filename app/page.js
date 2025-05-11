@@ -21,25 +21,22 @@ function HomeContent() {
         try {
           console.log('Código recibido de Strava:', code);
           
-          // Intercambiar el código por un token
-          const response = await fetch('https://www.strava.com/oauth/token', {
+          // Usar nuestro endpoint del servidor para intercambiar el código por un token
+          const response = await fetch('/api/auth/strava/exchange', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({
-              client_id: process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID || '129187',
-              client_secret: process.env.NEXT_PUBLIC_STRAVA_CLIENT_SECRET,
-              code,
-              grant_type: 'authorization_code',
-            }),
+            body: JSON.stringify({ code }),
           });
           
           const data = await response.json();
-          console.log('Respuesta del token:', data);
+          console.log('Respuesta del token (status):', response.status);
           
           if (!response.ok) {
-            setErrorMessage(JSON.stringify(data));
+            const errorDetail = JSON.stringify(data);
+            console.error('Error obteniendo token:', errorDetail);
+            setErrorMessage(`Error al procesar la autorización: ${errorDetail}`);
             setLoading(false);
             return;
           }

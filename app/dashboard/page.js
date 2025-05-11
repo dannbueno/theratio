@@ -360,6 +360,8 @@ function DashboardContent() {
       time: []
     });
     const [loading, setLoading] = useState(false);
+    const [activityMedia, setActivityMedia] = useState([]);
+    const [hasMedia, setHasMedia] = useState(false);
     const token = searchParams.get('token');
     
     // Cerrar modal con la tecla ESC
@@ -376,6 +378,40 @@ function DashboardContent() {
         window.removeEventListener('keydown', handleEscKey);
       };
     }, [onClose]);
+    
+    // Verificar si la actividad tiene fotos
+    useEffect(() => {
+      if (activity && token) {
+        // Verificar si hay fotos disponibles (total_photo_count > 0)
+        setHasMedia(activity.total_photo_count > 0);
+        
+        // Si tiene fotos y estamos en la pestaña de media, cargar las fotos
+        if (activity.total_photo_count > 0 && activeTab === 'media') {
+          const fetchActivityPhotos = async () => {
+            setLoading(true);
+            try {
+              const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/photos?size=1000`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              
+              if (!response.ok) {
+                throw new Error('Failed to fetch activity photos');
+              }
+              
+              const data = await response.json();
+              setActivityMedia(data);
+            } catch (error) {
+              console.error('Error fetching activity photos:', error);
+              setActivityMedia([]);
+            } finally {
+              setLoading(false);
+            }
+          };
+          
+          fetchActivityPhotos();
+        }
+      }
+    }, [activity, token, activeTab]);
     
     // Cargar streams de datos cuando el usuario cambia a la pestaña de mapa o gráficos
     useEffect(() => {
@@ -502,9 +538,9 @@ function DashboardContent() {
       'id', 'start_date_local', 'timezone', 'utc_offset', 'location_city', 'location_state', 'location_country',
       'achievement_count', 'trainer', 'commute', 'manual', 'private', 'visibility', 'flagged', 'gear_id',
       'start_latlng', 'end_latlng', 'device_watts', 'heartrate_opt_out', 'display_hide_heartrate_option',
-      'upload_id', 'upload_id_str', 'external_id', 'from_accepted_tag', 'pr_count', 'total_photo_count', 'has_kudoed',
+      'upload_id', 'upload_id_str', 'external_id', 'from_accepted_tag', 'pr_count', 'has_kudoed',
       'resource_state', 'athlete',
-      'workout_type', 'kudos_count', 'comment_count', 'athlete_count', 'photo_count', 'map',
+      'workout_type', 'kudos_count', 'comment_count', 'athlete_count', 'map',
       'type',
       'has_heartrate', 'kilojoules',
       // Ocultar campos redundantes que ya se muestran en la cabecera
@@ -741,6 +777,14 @@ function DashboardContent() {
             >
               Gráficos
             </button>
+            {hasMedia && (
+              <button
+                className={`px-4 py-2 font-medium text-sm ${activeTab === 'media' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+                onClick={() => setActiveTab('media')}
+              >
+                Fotos
+              </button>
+            )}
           </div>
           
           {/* Contenido de las pestañas con ancho y altura fijos */}
@@ -835,6 +879,50 @@ function DashboardContent() {
                         activityStreamHeartRate={activityStreams.heartrate} 
                       />
                     </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Pestaña de Media - fotos/videos */}
+            {activeTab === 'media' && hasMedia && (
+              <div className="h-full w-full">
+                {loading ? (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">Cargando fotos...</div>
+                  </div>
+                ) : (
+                  <div className="h-full w-full overflow-y-auto">
+                    {activityMedia.length === 0 ? (
+                      <div className="h-full w-full bg-neutral-800 flex items-center justify-center text-neutral-400">
+                        No se encontraron fotos para esta actividad
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center justify-between mb-3">
+                          <h3 className="text-sm text-neutral-400">Fotos de la actividad ({activityMedia.length})</h3>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          {activityMedia.map((photo, index) => (
+                            <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 hover:brightness-110 transition-all">
+                              <a href={photo.urls['1000']} target="_blank" rel="noopener noreferrer">
+                                <img 
+                                  src={photo.urls['600']} 
+                                  alt={`Foto ${index + 1} de la actividad`} 
+                                  className="w-full h-auto object-cover"
+                                  loading="lazy"
+                                />
+                              </a>
+                              {photo.caption && (
+                                <div className="p-2 text-xs text-neutral-300">
+                                  {photo.caption}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>

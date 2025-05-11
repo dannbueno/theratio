@@ -362,6 +362,8 @@ function DashboardContent() {
     const [loading, setLoading] = useState(false);
     const [activityMedia, setActivityMedia] = useState([]);
     const [hasMedia, setHasMedia] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const token = searchParams.get('token');
     
     // Cerrar modal con la tecla ESC
@@ -379,36 +381,70 @@ function DashboardContent() {
       };
     }, [onClose]);
     
-    // Verificar si la actividad tiene fotos
+    // Verificar si la actividad tiene fotos o videos
     useEffect(() => {
       if (activity && token) {
-        // Verificar si hay fotos disponibles (total_photo_count > 0)
-        setHasMedia(activity.total_photo_count > 0);
+        console.log('Verificando media, foto_count:', activity.photo_count, 'total_photo_count:', activity.total_photo_count);
         
-        // Si tiene fotos y estamos en la pestaña de media, cargar las fotos
-        if (activity.total_photo_count > 0 && activeTab === 'media') {
-          const fetchActivityPhotos = async () => {
+        // Verificar si hay fotos disponibles (photo_count o total_photo_count > 0)
+        const hasPhotos = (activity.photo_count > 0 || activity.total_photo_count > 0);
+        
+        // Verificar si hay videos (verificando si existe la propiedad video_url)
+        const hasVideos = !!activity.video_url;
+        
+        setHasMedia(hasPhotos || hasVideos);
+        console.log('hasMedia:', hasPhotos || hasVideos, 'hasPhotos:', hasPhotos, 'hasVideos:', hasVideos);
+        
+        // Si tiene fotos o videos y estamos en la pestaña de media, cargarlos
+        if ((hasPhotos || hasVideos) && activeTab === 'media') {
+          const fetchActivityMedia = async () => {
             setLoading(true);
             try {
-              const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/photos?size=1000`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
+              let mediaItems = [];
               
-              if (!response.ok) {
-                throw new Error('Failed to fetch activity photos');
+              // Cargar fotos si están disponibles
+              if (hasPhotos) {
+                console.log('Fetching photos for activity:', activity.id);
+                const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) {
+                  console.error('Error fetching photos, status:', response.status);
+                  throw new Error('Failed to fetch activity photos');
+                }
+                
+                const data = await response.json();
+                console.log('Photos fetched:', data.length);
+                
+                // Añadir tipo para diferenciar entre fotos y videos
+                const photosWithType = data.map(photo => ({...photo, type: 'photo'}));
+                mediaItems = [...photosWithType];
               }
               
-              const data = await response.json();
-              setActivityMedia(data);
+              // Añadir videos si están disponibles
+              if (hasVideos && activity.video_url) {
+                console.log('Adding video:', activity.video_url);
+                const videoMedia = {
+                  type: 'video',
+                  url: activity.video_url,
+                  caption: 'Video de la actividad'
+                };
+                
+                mediaItems = [...mediaItems, videoMedia];
+              }
+              
+              setActivityMedia(mediaItems);
+              console.log('Media items set:', mediaItems.length);
             } catch (error) {
-              console.error('Error fetching activity photos:', error);
+              console.error('Error fetching activity media:', error);
               setActivityMedia([]);
             } finally {
               setLoading(false);
             }
           };
           
-          fetchActivityPhotos();
+          fetchActivityMedia();
         }
       }
     }, [activity, token, activeTab]);
@@ -464,6 +500,60 @@ function DashboardContent() {
         fetchActivityStreams();
       }
     }, [activeTab, activityStreams.polyline.length, loading, activity, token]);
+    
+    // Cerrar visor de imágenes con tecla ESC
+    useEffect(() => {
+      const handleKeyDown = (event) => {
+        if (event.key === 'Escape') {
+          if (selectedImage) {
+            setSelectedImage(null);
+          } else {
+            onClose();
+          }
+        } else if (event.key === 'ArrowLeft' && selectedImage) {
+          // Navegar a la imagen anterior
+          navigateImages(-1);
+        } else if (event.key === 'ArrowRight' && selectedImage) {
+          // Navegar a la imagen siguiente
+          navigateImages(1);
+        }
+      };
+      
+      window.addEventListener('keydown', handleKeyDown);
+      
+      return () => {
+        window.removeEventListener('keydown', handleKeyDown);
+      };
+    }, [onClose, selectedImage, activityMedia]);
+    
+    // Función para navegar entre imágenes
+    const navigateImages = (direction) => {
+      // Filtrar solo las fotos (no los videos)
+      const photoMedia = activityMedia.filter(media => media.type === 'photo');
+      if (photoMedia.length <= 1) return;
+      
+      // Encontrar el índice actual
+      const currentIndex = photoMedia.findIndex(media => 
+        selectedImage.urls && media.urls && 
+        selectedImage.urls['1000'] === media.urls['1000']
+      );
+      
+      if (currentIndex === -1) return;
+      
+      // Calcular nuevo índice con wrap-around
+      let newIndex = (currentIndex + direction) % photoMedia.length;
+      if (newIndex < 0) newIndex = photoMedia.length - 1;
+      
+      // Establecer nueva imagen seleccionada
+      setSelectedImage(photoMedia[newIndex]);
+      setSelectedImageIndex(newIndex);
+    };
+    
+    // Función para abrir el visor de imágenes
+    const openImageViewer = (media, index) => {
+      setSelectedImage(media);
+      setSelectedImageIndex(index);
+    };
     
     if (!activity) return null;
     
@@ -889,33 +979,68 @@ function DashboardContent() {
               <div className="h-full w-full">
                 {loading ? (
                   <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
-                    <div className="text-neutral-400">Cargando fotos...</div>
+                    <div className="text-neutral-400">Cargando contenido multimedia...</div>
                   </div>
                 ) : (
                   <div className="h-full w-full overflow-y-auto">
                     {activityMedia.length === 0 ? (
                       <div className="h-full w-full bg-neutral-800 flex items-center justify-center text-neutral-400">
-                        No se encontraron fotos para esta actividad
+                        No se encontró contenido multimedia para esta actividad
                       </div>
                     ) : (
                       <>
                         <div className="flex items-center justify-between mb-3">
-                          <h3 className="text-sm text-neutral-400">Fotos de la actividad ({activityMedia.length})</h3>
+                          <h3 className="text-sm text-neutral-400">Contenido multimedia ({activityMedia.length})</h3>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                          {activityMedia.map((photo, index) => (
+                          {activityMedia.map((media, index) => (
                             <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 hover:brightness-110 transition-all">
-                              <a href={photo.urls['1000']} target="_blank" rel="noopener noreferrer">
-                                <img 
-                                  src={photo.urls['600']} 
-                                  alt={`Foto ${index + 1} de la actividad`} 
-                                  className="w-full h-auto object-cover"
-                                  loading="lazy"
-                                />
-                              </a>
-                              {photo.caption && (
-                                <div className="p-2 text-xs text-neutral-300">
-                                  {photo.caption}
+                              {media.type === 'photo' ? (
+                                <>
+                                  <div 
+                                    className="cursor-pointer" 
+                                    onClick={() => openImageViewer(media, index)}
+                                  >
+                                    <img 
+                                      src={media.urls ? (media.urls['600'] || media.urls['1000']) : media.url} 
+                                      alt={`Foto ${index + 1} de la actividad`} 
+                                      className="w-full h-auto object-cover"
+                                      loading="lazy"
+                                    />
+                                  </div>
+                                  {media.caption && (
+                                    <div className="p-2 text-xs text-neutral-300">
+                                      {media.caption}
+                                    </div>
+                                  )}
+                                </>
+                              ) : media.type === 'video' && (
+                                <div className="aspect-video">
+                                  {media.url.includes('youtube') ? (
+                                    <iframe
+                                      src={media.url.replace('watch?v=', 'embed/')}
+                                      title="Video de la actividad"
+                                      className="w-full h-full"
+                                      allowFullScreen
+                                      frameBorder="0"
+                                    ></iframe>
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center bg-neutral-700">
+                                      <a 
+                                        href={media.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                                      >
+                                        Ver video
+                                      </a>
+                                    </div>
+                                  )}
+                                  {media.caption && (
+                                    <div className="p-2 text-xs text-neutral-300">
+                                      {media.caption}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -928,6 +1053,65 @@ function DashboardContent() {
               </div>
             )}
           </div>
+          
+          {/* Visor de imágenes a pantalla completa */}
+          {selectedImage && (
+            <div 
+              className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center"
+              onClick={() => setSelectedImage(null)}
+            >
+              <div className="relative max-w-[90vw] max-h-[90vh]">
+                <img 
+                  src={selectedImage.urls ? (selectedImage.urls['1000'] || selectedImage.urls['600']) : selectedImage.url} 
+                  alt="Foto de la actividad" 
+                  className="max-w-full max-h-[90vh] object-contain"
+                />
+                {selectedImage.caption && (
+                  <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-3 text-white">
+                    {selectedImage.caption}
+                  </div>
+                )}
+                <button 
+                  className="absolute top-2 right-2 bg-black/60 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedImage(null);
+                  }}
+                >
+                  <span className="text-2xl">×</span>
+                </button>
+                
+                {/* Botones de navegación */}
+                {activityMedia.filter(m => m.type === 'photo').length > 1 && (
+                  <>
+                    <button 
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigateImages(-1);
+                      }}
+                    >
+                      <span className="text-2xl">&lsaquo;</span>
+                    </button>
+                    <button 
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigateImages(1);
+                      }}
+                    >
+                      <span className="text-2xl">&rsaquo;</span>
+                    </button>
+                    
+                    {/* Indicador de imagen actual */}
+                    <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-black/60 px-3 py-1 rounded-full text-white text-sm">
+                      {selectedImageIndex + 1} / {activityMedia.filter(m => m.type === 'photo').length}
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     );

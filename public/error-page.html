@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error de Autenticación</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #171717;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 600px;
+            padding: 2rem;
+            background-color: #262626;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        h1 {
+            color: #f97316;
+            margin-top: 0;
+        }
+        pre {
+            background-color: #1f1f1f;
+            padding: 1rem;
+            border-radius: 5px;
+            overflow: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .button {
+            display: inline-block;
+            background-color: #f97316;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            text-decoration: none;
+            margin-top: 1.5rem;
+            font-weight: 500;
+            transition: background-color 0.2s;
+        }
+        .button:hover {
+            background-color: #ea580c;
+        }
+        .code {
+            font-family: monospace;
+            background-color: rgba(249, 115, 22, 0.1);
+            padding: 2px 4px;
+            border-radius: 3px;
+            color: #f97316;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Error de Autenticación</h1>
+        <p>Ha ocurrido un error durante el proceso de autenticación con Strava. Esto puede deberse a una configuración incorrecta en la API de Strava o en la aplicación.</p>
+        
+        <h3>Posibles causas:</h3>
+        <ul>
+            <li>La URL de redirección (<span class="code" id="redirectUrl">no disponible</span>) no coincide con la configurada en tu aplicación de Strava.</li>
+            <li>El Client ID o Client Secret son incorrectos.</li>
+            <li>La autorización fue rechazada por el usuario.</li>
+            <li>Han ocurrido errores en la comunicación con la API de Strava.</li>
+        </ul>
+        
+        <h3>Detalles del error:</h3>
+        <pre id="errorDetails">No disponible</pre>
+        
+        <a href="/" class="button">Volver al inicio</a>
+    </div>
+
+    <script>
+        // Extraer parámetros de URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+        const details = urlParams.get('details');
+        const redirectUri = urlParams.get('redirect_uri');
+        
+        // Mostrar detalles del error
+        if (error) {
+            document.getElementById('errorDetails').textContent = error + (details ? '\n\n' + details : '');
+        } else {
+            document.getElementById('errorDetails').textContent = 'Error desconocido';
+        }
+        
+        // Mostrar URL de redirección
+        if (redirectUri) {
+            document.getElementById('redirectUrl').textContent = redirectUri;
+        }
+    </script>
+</body>
+</html> 

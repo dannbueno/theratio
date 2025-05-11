@@ -9,10 +9,19 @@ export async function GET(request) {
     const url = new URL(request.url);
     const code = url.searchParams.get('code');
     const error = url.searchParams.get('error');
+    
+    // Obtener la URL base correcta
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://theratio.vercel.app';
+    const redirectUri = `${baseUrl}/api/auth/strava/callback`;
+    
+    console.log('URL de redirección que se usó:', redirectUri);
+    console.log('Código recibido:', code);
+    console.log('Error recibido:', error);
 
-    // Si hay un error o no hay código, redirigir a la página principal con un mensaje de error
+    // Si hay un error o no hay código, redirigir a la página de error
     if (error || !code) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}?error=authentication_failed`);
+      const errorDetails = error || 'No se recibió código de autorización';
+      return NextResponse.redirect(`${baseUrl}/error-page.html?error=${encodeURIComponent(errorDetails)}&redirect_uri=${encodeURIComponent(redirectUri)}`);
     }
 
     // Intercambiar el código por un token de acceso
@@ -31,9 +40,13 @@ export async function GET(request) {
 
     const tokenData = await tokenResponse.json();
 
+    // Registrar los datos para depuración
+    console.log('Respuesta de token:', JSON.stringify(tokenData));
+
     if (!tokenResponse.ok) {
       console.error('Error intercambiando código por token:', tokenData);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}?error=token_exchange_failed`);
+      // Redirigir a la página de error con detalles
+      return NextResponse.redirect(`${baseUrl}/error-page.html?error=${encodeURIComponent(JSON.stringify(tokenData))}&redirect_uri=${encodeURIComponent(redirectUri)}`);
     }
 
     // Extraer los tokens
@@ -41,9 +54,10 @@ export async function GET(request) {
     
     // Redirigir al dashboard con el token de acceso
     // En una aplicación real, almacenarías estos tokens de forma segura en una base de datos
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard?token=${access_token}`);
+    return NextResponse.redirect(`${baseUrl}/dashboard?token=${access_token}`);
   } catch (error) {
     console.error('Error procesando el callback de Strava:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}?error=server_error`);
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://theratio.vercel.app';
+    return NextResponse.redirect(`${baseUrl}/error-page.html?error=server_error&details=${encodeURIComponent(error.message)}`);
   }
 } 

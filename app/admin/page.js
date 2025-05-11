@@ -9,45 +9,70 @@ export default function AdminPage() {
   const [error, setError] = useState(null);
   
   useEffect(() => {
-    // Usar datos estáticos para pruebas
-    const mockSessions = [
-      {
-        id: 12345678,
-        name: "Usuario de Prueba",
-        profile: "https://example.com/profile.jpg",
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 87654321,
-        name: "Ana García",
-        profile: "https://example.com/profile2.jpg",
-        timestamp: new Date(Date.now() - 86400000).toISOString() // Ayer
+    const fetchSessions = async () => {
+      try {
+        setLoading(true);
+        console.log('Intentando cargar sesiones...');
+        
+        const response = await fetch('/api/admin/sessions');
+        console.log('Respuesta recibida:', response.status);
+        
+        if (!response.ok) {
+          let errorMsg = `Error: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            console.error('Error en la respuesta:', response.status, errorData);
+            if (errorData.details) {
+              errorMsg += ` - ${errorData.details}`;
+            } else if (errorData.error) {
+              errorMsg += ` - ${errorData.error}`;
+            }
+          } catch (e) {
+            console.error('No se pudo procesar la respuesta de error:', e);
+          }
+          throw new Error(errorMsg);
+        }
+        
+        const data = await response.json();
+        console.log('Datos recibidos:', data);
+        
+        if (!data.sessions || !Array.isArray(data.sessions)) {
+          console.error('Formato de datos inválido:', data);
+          throw new Error('Los datos de sesiones no tienen el formato esperado');
+        }
+        
+        setSessions(data.sessions);
+        setStats(data.stats || {
+          totalUsers: data.sessions.length,
+          lastLogin: data.sessions.length > 0 ? data.sessions[0] : null
+        });
+      } catch (err) {
+        console.error('Error al cargar sesiones:', err);
+        setError(err.message || 'Error al cargar las sesiones');
+        // No limpiamos las sesiones para mostrar datos en caché si están disponibles
+      } finally {
+        setLoading(false);
       }
-    ];
-    
-    const mockStats = {
-      totalUsers: mockSessions.length,
-      lastLogin: mockSessions[0]
     };
     
-    // Simular una carga
-    setTimeout(() => {
-      setSessions(mockSessions);
-      setStats(mockStats);
-      setLoading(false);
-    }, 1000);
+    fetchSessions();
   }, []);
   
   // Formateador de fechas
   const formatDate = (dateString) => {
-    const options = { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    };
-    return new Date(dateString).toLocaleDateString('es-ES', options);
+    try {
+      const options = { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      };
+      return new Date(dateString).toLocaleDateString('es-ES', options);
+    } catch (e) {
+      console.error('Error al formatear fecha:', e);
+      return dateString || 'Fecha desconocida';
+    }
   };
   
   return (

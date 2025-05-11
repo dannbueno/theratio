@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// Contenido del componente para cargarlo dinámicamente sin SSR
+// Importar el CSS de Leaflet globalmente
+import 'leaflet/dist/leaflet.css';
+
+// Separando el contenido del mapa para la carga dinámica
 const MapContent = ({ polyline }) => {
   // Importación de leaflet solo en el cliente
   const { MapContainer, TileLayer, Polyline, Marker, useMap } = require('react-leaflet');
   const L = require('leaflet');
-  require('leaflet/dist/leaflet.css');
-
+  
   // Corregir el problema de los íconos de Leaflet en Next.js
   const iconUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png';
   const shadowUrl = 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png';
@@ -94,16 +96,17 @@ const MapContent = ({ polyline }) => {
   );
 };
 
+// Crear un componente dinámico para cargar solo en el cliente
+const MapComponentWithNoSSR = dynamic(() => Promise.resolve(MapContent), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full bg-neutral-800 flex items-center justify-center text-neutral-400">
+      Cargando mapa...
+    </div>
+  ),
+});
+
 // Exportar un componente que se cargará solo en el cliente
 export default function MapComponent({ polyline }) {
-  // Si no hay datos o no estamos en el cliente, mostrar placeholder
-  if (typeof window === 'undefined' || !polyline || polyline.length === 0) {
-    return (
-      <div className="h-full bg-neutral-800 flex items-center justify-center text-neutral-400">
-        {typeof window === 'undefined' ? 'Cargando mapa...' : 'No hay datos de ruta disponibles'}
-      </div>
-    );
-  }
-
-  return <MapContent polyline={polyline} />;
+  return <MapComponentWithNoSSR polyline={polyline} />;
 } 

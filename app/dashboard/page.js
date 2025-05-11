@@ -1047,6 +1047,7 @@ function DashboardContent() {
                                     className="cursor-pointer h-[320px] overflow-hidden" 
                                     onClick={() => openImageViewer(media, index)}
                                   >
+                                    {/* Imagen ajustada a altura óptima */}
                                     <img 
                                       src={media.urls ? (media.urls['600'] || media.urls['1000']) : media.url} 
                                       alt={`Foto ${index + 1} de la actividad`} 
@@ -1061,7 +1062,8 @@ function DashboardContent() {
                                   )}
                                 </>
                               ) : media.type === 'video' && (
-                                <div className="h-[160px] overflow-hidden">
+                                <div className="h-[320px] overflow-hidden">
+                                  {/* Video ajustado a altura óptima */}
                                   {media.url.includes('youtube') ? (
                                     <iframe
                                       src={media.url.replace('watch?v=', 'embed/')}

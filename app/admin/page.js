@@ -12,18 +12,25 @@ export default function AdminPage() {
     const fetchSessions = async () => {
       try {
         setLoading(true);
+        console.log('Intentando cargar sesiones...');
         const response = await fetch('/api/admin/sessions');
+        console.log('Respuesta recibida:', response.status);
         
         if (!response.ok) {
-          throw new Error('Error al cargar las sesiones');
+          const errorData = await response.json().catch(() => ({}));
+          console.error('Error en la respuesta:', response.status, errorData);
+          throw new Error(`Error al cargar las sesiones: ${response.status} ${errorData.error || ''}`);
         }
         
         const data = await response.json();
-        setSessions(data.sessions);
-        setStats(data.stats);
+        console.log('Datos recibidos:', data);
+        setSessions(data.sessions || []);
+        setStats(data.stats || null);
       } catch (err) {
-        console.error('Error:', err);
-        setError(err.message);
+        console.error('Error al cargar sesiones:', err);
+        setError(err.message || 'Error al cargar las sesiones');
+        setSessions([]);
+        setStats(null);
       } finally {
         setLoading(false);
       }
@@ -56,7 +63,14 @@ export default function AdminPage() {
           </div>
         ) : error ? (
           <div className="bg-red-900/30 border border-red-700 text-red-200 p-6 rounded-xl">
-            {error}
+            <p className="font-medium mb-2">Error:</p>
+            <p>{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-red-700 hover:bg-red-600 rounded text-white text-sm"
+            >
+              Reintentar
+            </button>
           </div>
         ) : (
           <>

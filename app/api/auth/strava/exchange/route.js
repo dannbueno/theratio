@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
+import kv from '@/lib/kv';
 
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
@@ -9,13 +10,6 @@ async function saveSession(userData) {
   try {
     console.log('Intentando guardar sesión para:', userData.athlete.id);
     
-    // Conectar a MongoDB
-    const client = await clientPromise;
-    console.log('Conexión a MongoDB exitosa');
-    
-    const db = client.db("theratio");
-    const collection = db.collection("sessions");
-    
     // Crear objeto de sesión con marca de tiempo
     const session = {
       id: userData.athlete.id,
@@ -24,7 +18,39 @@ async function saveSession(userData) {
       timestamp: new Date().toISOString(),
     };
     
-    console.log('Guardando sesión:', session);
+    // Primero intentamos usar Vercel KV
+    try {
+      console.log('Guardando sesión en Vercel KV');
+      
+      // Obtener sesiones existentes
+      const existingSessions = await kv.get('user-sessions') || [];
+      console.log('Sesiones existentes en KV:', existingSessions.length);
+      
+      // Comprobar si el usuario ya existe y actualizar en lugar de duplicar
+      const existingIndex = existingSessions.findIndex(s => s.id === session.id);
+      if (existingIndex >= 0) {
+        existingSessions[existingIndex] = session;
+      } else {
+        existingSessions.push(session);
+      }
+      
+      // Guardar sesiones actualizadas
+      await kv.set('user-sessions', existingSessions);
+      console.log('Sesión guardada en KV:', session.name);
+      return true;
+    } catch (kvError) {
+      console.error('Error al guardar en KV, usando MongoDB como respaldo:', kvError);
+    }
+    
+    // Si falla KV, usamos MongoDB como respaldo
+    // Conectar a MongoDB
+    const client = await clientPromise;
+    console.log('Conexión a MongoDB exitosa');
+    
+    const db = client.db("theratio");
+    const collection = db.collection("sessions");
+    
+    console.log('Guardando sesión en MongoDB:', session);
     
     // Actualizar o insertar la sesión (upsert)
     const result = await collection.updateOne(
@@ -33,7 +59,7 @@ async function saveSession(userData) {
       { upsert: true }
     );
     
-    console.log('Resultado de guardado:', result);
+    console.log('Resultado de guardado en MongoDB:', result);
     console.log(`Sesión guardada para ${session.name}`);
     return true;
   } catch (error) {

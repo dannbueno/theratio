@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import clientPromise from '@/lib/mongodb';
+import kv from '@/lib/kv';
 
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
@@ -8,6 +9,34 @@ export async function GET() {
   try {
     console.log('Obteniendo sesiones...');
     
+    // Primero intentamos con Vercel KV
+    try {
+      console.log('Intentando obtener sesiones desde Vercel KV...');
+      const sessions = await kv.get('user-sessions') || [];
+      console.log(`KV: Encontradas ${sessions.length} sesiones`);
+      
+      // Calcular estadísticas
+      const stats = {
+        totalUsers: sessions.length,
+        lastLogin: sessions.length > 0 
+          ? sessions.reduce((latest, session) => {
+              return new Date(session.timestamp) > new Date(latest.timestamp) ? session : latest;
+            }, sessions[0])
+          : null
+      };
+      
+      console.log('KV: Estadísticas calculadas:', stats);
+      
+      return NextResponse.json({
+        sessions,
+        stats,
+        source: 'vercel-kv'
+      });
+    } catch (kvError) {
+      console.error('Error al usar Vercel KV, probando con MongoDB:', kvError);
+    }
+    
+    // Si KV falla, intentamos con MongoDB como respaldo
     // Conectar a MongoDB
     const client = await clientPromise;
     console.log('Conexión a MongoDB exitosa');
@@ -44,10 +73,11 @@ export async function GET() {
     // Devolver las sesiones con estadísticas
     return NextResponse.json({
       sessions,
-      stats
+      stats,
+      source: 'mongodb'
     });
   } catch (error) {
     console.error('Error al leer las sesiones:', error);
-    return NextResponse.json({ error: 'Error al obtener las sesiones' }, { status: 500 });
+    return NextResponse.json({ error: 'Error al obtener las sesiones', details: error.message }, { status: 500 });
   }
 } 

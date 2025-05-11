@@ -1,7 +1,51 @@
 import { NextResponse } from 'next/server';
+import fs from 'fs';
+import path from 'path';
 
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
+
+// Función para guardar la sesión del usuario
+async function saveSession(userData) {
+  try {
+    // Ruta al archivo de sesiones
+    const dataFilePath = path.join(process.cwd(), 'server', 'data', 'sessions.json');
+    
+    // Si el archivo no existe, crear uno nuevo
+    if (!fs.existsSync(dataFilePath)) {
+      fs.writeFileSync(dataFilePath, JSON.stringify({ sessions: [] }, null, 2));
+    }
+    
+    // Leer el archivo existente
+    const fileContent = fs.readFileSync(dataFilePath, 'utf-8');
+    const data = JSON.parse(fileContent);
+    
+    // Añadir la nueva sesión con marca de tiempo
+    const session = {
+      id: userData.athlete.id,
+      name: `${userData.athlete.firstname} ${userData.athlete.lastname}`,
+      profile: userData.athlete.profile,
+      timestamp: new Date().toISOString(),
+    };
+    
+    // Comprobar si el usuario ya existe y actualizar en lugar de duplicar
+    const existingIndex = data.sessions.findIndex(s => s.id === session.id);
+    if (existingIndex >= 0) {
+      data.sessions[existingIndex] = session;
+    } else {
+      data.sessions.push(session);
+    }
+    
+    // Guardar el archivo actualizado
+    fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+    console.log(`Sesión guardada para ${session.name}`);
+    
+    return true;
+  } catch (error) {
+    console.error('Error al guardar la sesión:', error);
+    return false;
+  }
+}
 
 export async function POST(request) {
   try {
@@ -47,6 +91,11 @@ export async function POST(request) {
     if (!tokenResponse.ok) {
       console.error('Error intercambiando código por token:', tokenData);
       return NextResponse.json(tokenData, { status: tokenResponse.status });
+    }
+
+    // Guardar la sesión del usuario si la autenticación es exitosa
+    if (tokenData.athlete) {
+      await saveSession(tokenData);
     }
 
     // Devolver el token y otros datos al cliente

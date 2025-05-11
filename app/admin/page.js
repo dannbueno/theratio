@@ -9,34 +9,33 @@ export default function AdminPage() {
   const [error, setError] = useState(null);
   
   useEffect(() => {
-    const fetchSessions = async () => {
-      try {
-        setLoading(true);
-        console.log('Intentando cargar sesiones...');
-        const response = await fetch('/api/admin/sessions');
-        console.log('Respuesta recibida:', response.status);
-        
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          console.error('Error en la respuesta:', response.status, errorData);
-          throw new Error(`Error al cargar las sesiones: ${response.status} ${errorData.error || ''}`);
-        }
-        
-        const data = await response.json();
-        console.log('Datos recibidos:', data);
-        setSessions(data.sessions || []);
-        setStats(data.stats || null);
-      } catch (err) {
-        console.error('Error al cargar sesiones:', err);
-        setError(err.message || 'Error al cargar las sesiones');
-        setSessions([]);
-        setStats(null);
-      } finally {
-        setLoading(false);
+    // Usar datos estáticos para pruebas
+    const mockSessions = [
+      {
+        id: 12345678,
+        name: "Usuario de Prueba",
+        profile: "https://example.com/profile.jpg",
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: 87654321,
+        name: "Ana García",
+        profile: "https://example.com/profile2.jpg",
+        timestamp: new Date(Date.now() - 86400000).toISOString() // Ayer
       }
+    ];
+    
+    const mockStats = {
+      totalUsers: mockSessions.length,
+      lastLogin: mockSessions[0]
     };
     
-    fetchSessions();
+    // Simular una carga
+    setTimeout(() => {
+      setSessions(mockSessions);
+      setStats(mockStats);
+      setLoading(false);
+    }, 1000);
   }, []);
   
   // Formateador de fechas

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import clientPromise from '@/lib/mongodb';
 
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
@@ -8,19 +7,12 @@ export const dynamic = 'force-dynamic';
 // Función para guardar la sesión del usuario
 async function saveSession(userData) {
   try {
-    // Ruta al archivo de sesiones
-    const dataFilePath = path.join(process.cwd(), 'server', 'data', 'sessions.json');
+    // Conectar a MongoDB
+    const client = await clientPromise;
+    const db = client.db("theratio");
+    const collection = db.collection("sessions");
     
-    // Si el archivo no existe, crear uno nuevo
-    if (!fs.existsSync(dataFilePath)) {
-      fs.writeFileSync(dataFilePath, JSON.stringify({ sessions: [] }, null, 2));
-    }
-    
-    // Leer el archivo existente
-    const fileContent = fs.readFileSync(dataFilePath, 'utf-8');
-    const data = JSON.parse(fileContent);
-    
-    // Añadir la nueva sesión con marca de tiempo
+    // Crear objeto de sesión con marca de tiempo
     const session = {
       id: userData.athlete.id,
       name: `${userData.athlete.firstname} ${userData.athlete.lastname}`,
@@ -28,18 +20,14 @@ async function saveSession(userData) {
       timestamp: new Date().toISOString(),
     };
     
-    // Comprobar si el usuario ya existe y actualizar en lugar de duplicar
-    const existingIndex = data.sessions.findIndex(s => s.id === session.id);
-    if (existingIndex >= 0) {
-      data.sessions[existingIndex] = session;
-    } else {
-      data.sessions.push(session);
-    }
+    // Actualizar o insertar la sesión (upsert)
+    await collection.updateOne(
+      { id: session.id },
+      { $set: session },
+      { upsert: true }
+    );
     
-    // Guardar el archivo actualizado
-    fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
     console.log(`Sesión guardada para ${session.name}`);
-    
     return true;
   } catch (error) {
     console.error('Error al guardar la sesión:', error);

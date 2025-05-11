@@ -1,37 +1,31 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import clientPromise from '@/lib/mongodb';
 
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    // Ruta al archivo de sesiones
-    const dataFilePath = path.join(process.cwd(), 'server', 'data', 'sessions.json');
+    // Conectar a MongoDB
+    const client = await clientPromise;
+    const db = client.db("theratio");
     
-    // Si el archivo no existe, devolver un array vacío
-    if (!fs.existsSync(dataFilePath)) {
-      return NextResponse.json({ sessions: [] });
-    }
+    // Obtener las sesiones
+    const sessions = await db.collection("sessions").find({}).toArray();
     
-    // Leer el archivo de sesiones
-    const fileContent = fs.readFileSync(dataFilePath, 'utf-8');
-    const data = JSON.parse(fileContent);
-    
-    // Agregar información adicional
+    // Calcular estadísticas
     const stats = {
-      totalUsers: data.sessions.length,
-      lastLogin: data.sessions.length > 0 
-        ? data.sessions.reduce((latest, session) => {
+      totalUsers: sessions.length,
+      lastLogin: sessions.length > 0 
+        ? sessions.reduce((latest, session) => {
             return new Date(session.timestamp) > new Date(latest.timestamp) ? session : latest;
-          }, data.sessions[0])
+          }, sessions[0])
         : null
     };
     
     // Devolver las sesiones con estadísticas
     return NextResponse.json({
-      sessions: data.sessions,
+      sessions,
       stats
     });
   } catch (error) {

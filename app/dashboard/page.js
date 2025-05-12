@@ -214,8 +214,12 @@ function DashboardContent() {
   const getStartOfWeek = (date) => {
     const d = new Date(date);
     const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // lunes como inicio
-    return new Date(d.setDate(diff));
+    // Ajuste: 0 = domingo, 1 = lunes, ..., 6 = sábado
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Ajuste para que el lunes sea el inicio
+    d.setDate(diff);
+    // Establecer a las 00:00:00.000
+    d.setHours(0, 0, 0, 0);
+    return d;
   };
 
   // Helper para filtrar actividades por rango
@@ -227,11 +231,17 @@ function DashboardContent() {
     } else if (range === '7d') {
       from = new Date(now);
       from.setDate(now.getDate() - 7);
+      from.setHours(0, 0, 0, 0);
     } else if (range === '30d') {
       from = new Date(now);
       from.setDate(now.getDate() - 30);
+      from.setHours(0, 0, 0, 0);
     }
-    return activities.filter(a => new Date(a.start_date) >= from);
+    
+    return activities.filter(a => {
+      const activityDate = new Date(a.start_date);
+      return activityDate >= from;
+    });
   };
 
   useEffect(() => {

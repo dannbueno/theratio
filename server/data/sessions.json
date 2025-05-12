@@ -1,3 +1,16 @@
 {
-  "sessions": []
+  "sessions": [
+    {
+      "id": 12345678,
+      "name": "Daniel Bueno",
+      "profile": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/12345678/12345678/1/medium.jpg",
+      "timestamp": "2023-08-15T18:30:45.123Z"
+    },
+    {
+      "id": 87654321,
+      "name": "Ana García",
+      "profile": "https://dgalywyr863hv.cloudfront.net/pictures/athletes/87654321/87654321/1/medium.jpg",
+      "timestamp": "2023-08-16T10:15:22.456Z"
+    }
+  ]
 } 

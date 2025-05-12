@@ -679,6 +679,7 @@ function DashboardContent() {
       'workout_type', 'kudos_count', 'comment_count', 'athlete_count', 'map',
       'type',
       'has_heartrate', 'kilojoules',
+      'photo_count', 'total_photo_count',
       // Ocultar campos redundantes que ya se muestran en la cabecera
       'name', 'start_date',
       // Ocultar sport_type ya que lo mostraremos en la cabecera

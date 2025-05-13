@@ -125,7 +125,7 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
-  const [summaryTab, setSummaryTab] = useState('30d');
+  const [summaryTab, setSummaryTab] = useState('week');
   const token = searchParams.get('token');
 
   // Función para obtener las etiquetas de campo adecuadas según el tipo de deporte

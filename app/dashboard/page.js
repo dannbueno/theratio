@@ -361,15 +361,27 @@ function DashboardContent() {
   };
 
   // Calcular VAM (Velocidad de Ascenso Media) en metros/hora
-  const calculateVAM = (elevationGain, movingTime) => {
-    // Convertir tiempo en segundos a horas
+  const calculateVAM = (elevationGain, movingTime, climbTime = null, climbMeters = null) => {
+    // Si tenemos datos precisos de tiempo de subida y metros, usar esos valores
+    if (climbTime && climbMeters) {
+      // Convertir tiempo de subida de segundos a horas
+      const climbTimeHours = climbTime / 3600;
+      return Math.round(climbMeters / climbTimeHours);
+    }
+    
+    // Si no hay datos precisos, usar el cálculo estándar
+    // Convertir tiempo total en segundos a horas
     const movingTimeHours = movingTime / 3600;
     if (movingTimeHours === 0 || !elevationGain) return 0;
     return Math.round(elevationGain / movingTimeHours);
   };
 
   // Formatear VAM para mostrar
-  const formatVAM = (vam) => {
+  const formatVAM = (vam, climbTime = null, climbMeters = null) => {
+    if (climbTime && climbMeters) {
+      const climbTimeMinutes = Math.round(climbTime / 60);
+      return `${vam} m/h (${Math.round(climbMeters)}m en ${climbTimeMinutes}min efectivos)`;
+    }
     return `${vam} m/h`;
   };
 
@@ -628,6 +640,127 @@ function DashboardContent() {
       console.log(`Abriendo imagen en índice ${selectedImageIndex}. Total fotos: ${photoMedia.length}`);
     };
     
+    // Propiedades para VAM preciso
+    const [climbData, setClimbData] = useState({
+      climbTime: null,
+      climbMeters: null,
+      isPreciseVAM: false
+    });
+    
+    // Función para obtener datos precisos de VAM si es posible
+    const fetchPreciseVAMData = async () => {
+      if (!(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') ||
+          !activity.total_elevation_gain || activity.total_elevation_gain <= 0) {
+        return;
+      }
+      
+      try {
+        // Intentar obtener los streams para calcular VAM preciso
+        const streamsResponse = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=altitude,distance,time&key_by_type=true`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (!streamsResponse.ok) {
+          console.log('No se pudieron obtener datos de streams para VAM preciso');
+          return;
+        }
+        
+        const streams = await streamsResponse.json();
+        
+        // Verificar que tenemos todos los datos necesarios
+        if (!streams.altitude || !streams.distance || !streams.time) {
+          console.log('Faltan streams necesarios para el cálculo preciso de VAM');
+          return;
+        }
+        
+        const altitudes = streams.altitude.data;
+        const distances = streams.distance.data;
+        const times = streams.time.data;
+        
+        // Variables para acumular datos de subidas
+        let totalClimbTime = 0;
+        let totalClimbMeters = 0;
+        let inClimbSegment = false;
+        let segmentStartIndex = 0;
+        let currentClimbMeters = 0;
+        
+        // Identificar segmentos de subida (pendiente > 2%)
+        for (let i = 1; i < altitudes.length; i++) {
+          const altitudeDiff = altitudes[i] - altitudes[i-1];
+          const distanceDiff = distances[i] - distances[i-1];
+          
+          // Calcular pendiente en porcentaje
+          const gradient = distanceDiff > 0 ? (altitudeDiff / distanceDiff) * 100 : 0;
+          
+          // Si es una subida significativa
+          if (gradient >= 2 && altitudeDiff > 0) {
+            if (!inClimbSegment) {
+              // Inicio de un nuevo segmento de subida
+              inClimbSegment = true;
+              segmentStartIndex = i-1;
+              currentClimbMeters = 0;
+            }
+            // Acumular metros ascendidos
+            currentClimbMeters += altitudeDiff;
+          } else if (inClimbSegment) {
+            // Fin de un segmento de subida
+            if (currentClimbMeters >= 10) {
+              // Solo considerar segmentos con desnivel mínimo (10m)
+              const segmentTime = times[i-1] - times[segmentStartIndex];
+              totalClimbTime += segmentTime;
+              totalClimbMeters += currentClimbMeters;
+            }
+            inClimbSegment = false;
+          }
+        }
+        
+        // Comprobar si estamos en un segmento de subida al final de la actividad
+        if (inClimbSegment && currentClimbMeters >= 10) {
+          const segmentTime = times[times.length-1] - times[segmentStartIndex];
+          totalClimbTime += segmentTime;
+          totalClimbMeters += currentClimbMeters;
+        }
+        
+        // Actualizar el estado si tenemos datos válidos
+        if (totalClimbTime > 0 && totalClimbMeters > 0) {
+          setClimbData({
+            climbTime: totalClimbTime,
+            climbMeters: totalClimbMeters,
+            isPreciseVAM: true
+          });
+          
+          // Añadir datos precisos a la actividad
+          activity.climbTime = totalClimbTime;
+          activity.climbMeters = totalClimbMeters;
+          activity.vam = calculateVAM(null, null, totalClimbTime, totalClimbMeters);
+        } else {
+          // Usar VAM estándar si no hay datos precisos
+          activity.vam = calculateVAM(activity.total_elevation_gain, activity.moving_time);
+        }
+      } catch (error) {
+        console.error('Error obteniendo datos precisos de VAM:', error);
+      }
+    };
+    
+    // Calcular VAM al abrir el modal
+    useEffect(() => {
+      if (activity && 
+          (activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && 
+          activity.total_elevation_gain > 0) {
+        
+        // Intentar obtener datos precisos
+        fetchPreciseVAMData();
+        
+        // Mientras tanto, calcular VAM estándar
+        const standardVAM = calculateVAM(activity.total_elevation_gain, activity.moving_time);
+        
+        // Asignar VAM estándar mientras no tengamos el preciso
+        if (!activity.vam) {
+          activity.vam = standardVAM;
+        }
+      }
+    }, [activity]);
+    
     if (!activity) return null;
     
     const takeScreenshot = async () => {
@@ -695,14 +828,6 @@ function DashboardContent() {
       setShowCopyNotification(true);
       setTimeout(() => setShowCopyNotification(false), 2000);
     };
-    
-    // Calcular VAM para esta actividad
-    const activityVAM = calculateVAM(activity.total_elevation_gain, activity.moving_time);
-    
-    // Añadir VAM a los campos disponibles si es relevante
-    if ((activity.sport_type === 'Run' || activity.sport_type === 'TrailRun') && activity.total_elevation_gain > 0) {
-      activity.vam = activityVAM;
-    }
     
     // Lista de claves a ocultar
     const hiddenFields = [
@@ -1472,10 +1597,14 @@ function DashboardContent() {
                   </span>
                   <span className="block text-base sm:text-lg font-semibold text-white">
                     {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0
-                      ? calculateVAM(activity.total_elevation_gain, activity.moving_time)
+                      ? calculateVAM(activity.total_elevation_gain, activity.moving_time, activity.climbTime, activity.climbMeters)
                       : activity.suffer_score || 'N/A'}
-                    {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0 && 
-                      <span className="text-xs text-neutral-300"> m/h</span>}
+                    {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0 && (
+                      <span className="text-xs text-neutral-300"> m/h</span>
+                    )}
+                    {activity.climbTime && activity.climbMeters && (
+                      <span className="text-[9px] block text-green-400/80">Subida efectiva</span>
+                    )}
                   </span>
                 </div>
               </div>

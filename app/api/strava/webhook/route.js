@@ -8,6 +8,8 @@ const METERS_TO_KM = 0.001;
 const MIN_RATIO_FOR_COMMENT = 10; // Umbral mínimo para comentar
 const MIN_VAM_FOR_COMMENT = 500; // Umbral mínimo para comentar VAM (metros/hora)
 const SECONDS_TO_HOURS = 1 / 3600; // Conversión de segundos a horas
+const MIN_ELEVATION_GAIN_FOR_SEGMENT = 10; // Mínimo desnivel para considerar un segmento de subida (en metros)
+const MIN_GRADIENT_FOR_CLIMB = 2; // Pendiente mínima en % para considerar una subida
 
 // Endpoint GET para verificar el webhook con Strava
 export async function GET(request) {
@@ -23,6 +25,103 @@ export async function GET(request) {
   } else {
     console.error('Verificación de webhook fallida');
     return NextResponse.json({ error: 'Verificación fallida' }, { status: 403 });
+  }
+}
+
+// Función para identificar segmentos de subida y calcular VAM preciso
+async function calculatePreciseVAM(activityId, accessToken) {
+  try {
+    // Obtener datos de stream para la actividad (altitud, distancia y tiempo)
+    const streamsResponse = await fetch(
+      `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=altitude,distance,time&key_by_type=true`,
+      {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      }
+    );
+    
+    if (!streamsResponse.ok) {
+      console.error('Error obteniendo streams:', await streamsResponse.text());
+      // Si no podemos obtener los streams, retornamos null para usar el método básico
+      return { vam: null, climbTime: null, climbMeters: null };
+    }
+    
+    const streams = await streamsResponse.json();
+    
+    // Verificar que tenemos todos los datos necesarios
+    if (!streams.altitude || !streams.distance || !streams.time) {
+      console.log('Faltan streams necesarios para el cálculo preciso');
+      return { vam: null, climbTime: null, climbMeters: null };
+    }
+    
+    const altitudes = streams.altitude.data;
+    const distances = streams.distance.data;
+    const times = streams.time.data;
+    
+    // Variables para acumular datos de subidas
+    let totalClimbTime = 0; // Tiempo total en subidas (segundos)
+    let totalClimbMeters = 0; // Metros totales ascendidos
+    let inClimbSegment = false;
+    let segmentStartIndex = 0;
+    let currentClimbMeters = 0;
+    
+    // Procesar los datos punto por punto para identificar subidas
+    for (let i = 1; i < altitudes.length; i++) {
+      const altitudeDiff = altitudes[i] - altitudes[i-1];
+      const distanceDiff = distances[i] - distances[i-1];
+      
+      // Calcular pendiente en porcentaje (altitud/distancia horizontal * 100)
+      const gradient = distanceDiff > 0 ? (altitudeDiff / distanceDiff) * 100 : 0;
+      
+      // Si es una subida significativa
+      if (gradient >= MIN_GRADIENT_FOR_CLIMB && altitudeDiff > 0) {
+        if (!inClimbSegment) {
+          // Inicio de un nuevo segmento de subida
+          inClimbSegment = true;
+          segmentStartIndex = i-1;
+          currentClimbMeters = 0;
+        }
+        // Acumular metros ascendidos
+        currentClimbMeters += altitudeDiff;
+      } else if (inClimbSegment) {
+        // Fin de un segmento de subida
+        if (currentClimbMeters >= MIN_ELEVATION_GAIN_FOR_SEGMENT) {
+          // Solo considerar segmentos con desnivel mínimo
+          const segmentTime = times[i-1] - times[segmentStartIndex];
+          totalClimbTime += segmentTime;
+          totalClimbMeters += currentClimbMeters;
+          console.log(`Segmento de subida identificado: ${currentClimbMeters.toFixed(1)}m en ${segmentTime}s`);
+        }
+        inClimbSegment = false;
+      }
+    }
+    
+    // Comprobar si estamos en un segmento de subida al final de la actividad
+    if (inClimbSegment && currentClimbMeters >= MIN_ELEVATION_GAIN_FOR_SEGMENT) {
+      const segmentTime = times[times.length-1] - times[segmentStartIndex];
+      totalClimbTime += segmentTime;
+      totalClimbMeters += currentClimbMeters;
+      console.log(`Segmento final de subida: ${currentClimbMeters.toFixed(1)}m en ${segmentTime}s`);
+    }
+    
+    // Calcular VAM preciso (solo si hay datos válidos)
+    let vam = null;
+    if (totalClimbTime > 0 && totalClimbMeters > 0) {
+      // Convertir tiempo de segundos a horas
+      const climbTimeHours = totalClimbTime * SECONDS_TO_HOURS;
+      vam = Math.round(totalClimbMeters / climbTimeHours);
+      console.log(`VAM preciso calculado: ${vam} m/h (${totalClimbMeters.toFixed(1)}m en ${totalClimbTime}s)`);
+    } else {
+      console.log('No se identificaron segmentos de subida significativos');
+    }
+    
+    return { 
+      vam, 
+      climbTime: totalClimbTime, 
+      climbMeters: totalClimbMeters 
+    };
+  } catch (error) {
+    console.error('Error calculando VAM preciso:', error);
+    return { vam: null, climbTime: null, climbMeters: null };
   }
 }
 
@@ -69,8 +168,14 @@ export async function POST(request) {
         const distanceKm = activityDetails.distance * METERS_TO_KM;
         const movingTimeHours = activityDetails.moving_time * SECONDS_TO_HOURS;
         
-        // Calcular el VAM (Velocidad de Ascenso Media) en metros/hora
-        const vam = movingTimeHours > 0 ? elevationGain / movingTimeHours : 0;
+        // Calcular VAM estándar como respaldo
+        const standardVam = movingTimeHours > 0 ? elevationGain / movingTimeHours : 0;
+        
+        // Intentar calcular VAM preciso identificando subidas específicas
+        const { vam: preciseVam, climbTime, climbMeters } = await calculatePreciseVAM(activityId, accessToken);
+        
+        // Usar VAM preciso si está disponible, sino usar el estándar
+        const vam = preciseVam || standardVam;
         
         let commentParts = [];
         let shouldComment = false;
@@ -86,7 +191,13 @@ export async function POST(request) {
         
         // Añadir VAM si es relevante
         if (vam >= MIN_VAM_FOR_COMMENT) {
-          commentParts.push(`⬆️ VAM: ${Math.round(vam)} m/h`);
+          // Si es VAM preciso, añadir más detalles
+          if (preciseVam && climbTime && climbMeters) {
+            const climbTimeMinutes = Math.round(climbTime / 60);
+            commentParts.push(`⬆️ VAM: ${Math.round(vam)} m/h (${Math.round(climbMeters)}m en ${climbTimeMinutes}min efectivos de subida)`);
+          } else {
+            commentParts.push(`⬆️ VAM: ${Math.round(vam)} m/h`);
+          }
           shouldComment = true;
         }
         
@@ -119,6 +230,9 @@ export async function POST(request) {
             success: true, 
             message: 'Actividad actualizada con métricas',
             vam: vam > 0 ? Math.round(vam) : null,
+            precise_vam: preciseVam !== null,
+            climb_time: climbTime,
+            climb_meters: climbMeters,
             ratio: distanceKm > 0 ? (elevationGain / distanceKm).toFixed(1) : null
           });
         } else {
@@ -127,6 +241,7 @@ export async function POST(request) {
             success: true, 
             message: 'Métricas no alcanzan umbrales mínimos',
             vam: vam > 0 ? Math.round(vam) : null,
+            precise_vam: preciseVam !== null,
             ratio: distanceKm > 0 ? (elevationGain / distanceKm).toFixed(1) : null
           });
         }

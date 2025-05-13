@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic';
 // Constantes
 const METERS_TO_KM = 0.001;
 const MIN_RATIO_FOR_COMMENT = 10; // Umbral mínimo para comentar
+const MIN_VAM_FOR_COMMENT = 500; // Umbral mínimo para comentar VAM (metros/hora)
+const SECONDS_TO_HOURS = 1 / 3600; // Conversión de segundos a horas
 
 // Endpoint GET para verificar el webhook con Strava
 export async function GET(request) {
@@ -58,59 +60,81 @@ export async function POST(request) {
 
       const activityDetails = await activityResponse.json();
       
-      // Solo procesar actividades de tipo TrailRun
-      if (activityDetails.sport_type === 'TrailRun') {
+      // Solo procesar actividades de tipo TrailRun o Run con elevación
+      if ((activityDetails.sport_type === 'TrailRun' || activityDetails.sport_type === 'Run') && 
+          activityDetails.total_elevation_gain > 0) {
+        
         // Calcular ratio elevación/distancia (metros de desnivel por km)
         const elevationGain = activityDetails.total_elevation_gain;
         const distanceKm = activityDetails.distance * METERS_TO_KM;
+        const movingTimeHours = activityDetails.moving_time * SECONDS_TO_HOURS;
         
+        // Calcular el VAM (Velocidad de Ascenso Media) en metros/hora
+        const vam = movingTimeHours > 0 ? elevationGain / movingTimeHours : 0;
+        
+        let commentParts = [];
+        let shouldComment = false;
+        
+        // Calcular y añadir ratio si es relevante
         if (distanceKm > 0) {
           const ratio = elevationGain / distanceKm;
-          
-          // Solo comentar si el ratio supera cierto umbral
           if (ratio >= MIN_RATIO_FOR_COMMENT) {
-            // Preparar comentario
-            const comment = `🏔️ THE RATIO: ${ratio.toFixed(1)} m/km de desnivel`;
-            
-            // Actualizar la actividad con el comentario
-            const updateResponse = await fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
-              method: 'PUT',
-              headers: {
-                'Authorization': `Bearer ${accessToken}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                description: activityDetails.description 
-                  ? `${activityDetails.description}\n\n${comment}` 
-                  : comment
-              })
-            });
-            
-            if (!updateResponse.ok) {
-              console.error('Error actualizando actividad:', await updateResponse.text());
-              return NextResponse.json({ error: 'Error al actualizar actividad' }, { status: 500 });
-            }
-            
-            console.log(`Actividad ${activityId} actualizada con ratio ${ratio.toFixed(1)}`);
-            return NextResponse.json({ 
-              success: true, 
-              message: 'Actividad actualizada con ratio',
-              ratio: ratio.toFixed(1)
-            });
-          } else {
-            console.log(`Actividad ${activityId} con ratio ${ratio.toFixed(1)} no alcanza el umbral mínimo`);
-            return NextResponse.json({ 
-              success: true, 
-              message: 'Ratio no alcanza umbral mínimo',
-              ratio: ratio.toFixed(1)
-            });
+            commentParts.push(`🏔️ THE RATIO: ${ratio.toFixed(1)} m/km de desnivel`);
+            shouldComment = true;
           }
+        }
+        
+        // Añadir VAM si es relevante
+        if (vam >= MIN_VAM_FOR_COMMENT) {
+          commentParts.push(`⬆️ VAM: ${Math.round(vam)} m/h`);
+          shouldComment = true;
+        }
+        
+        // Solo comentar si al menos uno de los valores supera el umbral
+        if (shouldComment) {
+          // Unir las partes del comentario
+          const comment = commentParts.join('\n');
+          
+          // Actualizar la actividad con el comentario
+          const updateResponse = await fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              description: activityDetails.description 
+                ? `${activityDetails.description}\n\n${comment}` 
+                : comment
+            })
+          });
+          
+          if (!updateResponse.ok) {
+            console.error('Error actualizando actividad:', await updateResponse.text());
+            return NextResponse.json({ error: 'Error al actualizar actividad' }, { status: 500 });
+          }
+          
+          console.log(`Actividad ${activityId} actualizada con comentarios: ${comment}`);
+          return NextResponse.json({ 
+            success: true, 
+            message: 'Actividad actualizada con métricas',
+            vam: vam > 0 ? Math.round(vam) : null,
+            ratio: distanceKm > 0 ? (elevationGain / distanceKm).toFixed(1) : null
+          });
+        } else {
+          console.log(`Actividad ${activityId} no alcanza los umbrales mínimos para comentar`);
+          return NextResponse.json({ 
+            success: true, 
+            message: 'Métricas no alcanzan umbrales mínimos',
+            vam: vam > 0 ? Math.round(vam) : null,
+            ratio: distanceKm > 0 ? (elevationGain / distanceKm).toFixed(1) : null
+          });
         }
       } else {
         console.log(`Actividad ${activityId} ignorada. Tipo: ${activityDetails.sport_type}`);
         return NextResponse.json({ 
           success: true, 
-          message: 'Tipo de actividad no procesable'
+          message: 'Tipo de actividad no procesable o sin elevación'
         });
       }
     }

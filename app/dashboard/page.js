@@ -139,6 +139,9 @@ function DashboardContent() {
     if (sportType === 'TrailRun' && field === 'elevation_ratio') {
       return 'Ratio de desnivel';
     }
+    if ((sportType === 'Run' || sportType === 'TrailRun') && field === 'vam') {
+      return 'VAM';
+    }
     return fieldLabels[field] || field.replace(/_/g, ' ');
   };
 
@@ -169,6 +172,7 @@ function DashboardContent() {
     end_longitude: 'Longitud fin',
     sport_type: 'Deporte',
     average_temp: 'Temperatura Media',
+    vam: 'VAM',
     // Añade más traducciones si lo necesitas
   };
 
@@ -354,6 +358,19 @@ function DashboardContent() {
     if (distance === 0) return '0';
     const ratio = elevationGain / (distance / 1000);
     return ratio.toFixed(1);
+  };
+
+  // Calcular VAM (Velocidad de Ascenso Media) en metros/hora
+  const calculateVAM = (elevationGain, movingTime) => {
+    // Convertir tiempo en segundos a horas
+    const movingTimeHours = movingTime / 3600;
+    if (movingTimeHours === 0 || !elevationGain) return 0;
+    return Math.round(elevationGain / movingTimeHours);
+  };
+
+  // Formatear VAM para mostrar
+  const formatVAM = (vam) => {
+    return `${vam} m/h`;
   };
 
   // Modal component
@@ -678,6 +695,14 @@ function DashboardContent() {
       setShowCopyNotification(true);
       setTimeout(() => setShowCopyNotification(false), 2000);
     };
+    
+    // Calcular VAM para esta actividad
+    const activityVAM = calculateVAM(activity.total_elevation_gain, activity.moving_time);
+    
+    // Añadir VAM a los campos disponibles si es relevante
+    if ((activity.sport_type === 'Run' || activity.sport_type === 'TrailRun') && activity.total_elevation_gain > 0) {
+      activity.vam = activityVAM;
+    }
     
     // Lista de claves a ocultar
     const hiddenFields = [
@@ -1206,6 +1231,19 @@ function DashboardContent() {
       statsBySport[a.sport_type].km += a.distance / 1000;
       statsBySport[a.sport_type].elevation += a.total_elevation_gain || 0;
       statsBySport[a.sport_type].count += 1;
+      
+      // Añadir VAM para actividades relevantes
+      if ((a.sport_type === 'Run' || a.sport_type === 'TrailRun') && a.total_elevation_gain > 0) {
+        if (!statsBySport[a.sport_type].vamTotal) {
+          statsBySport[a.sport_type].vamTotal = 0;
+          statsBySport[a.sport_type].vamCount = 0;
+        }
+        const vam = calculateVAM(a.total_elevation_gain, a.moving_time);
+        if (vam > 0) {
+          statsBySport[a.sport_type].vamTotal += vam;
+          statsBySport[a.sport_type].vamCount += 1;
+        }
+      }
     });
     // Calcular días del rango
     let days = 1;
@@ -1281,6 +1319,12 @@ function DashboardContent() {
                       <div>
                         <span className="text-neutral-400">Ratio:</span>
                         <span className="font-semibold">{formatElevationRatio(stats.elevation, stats.km * 1000)} m+/km</span>
+                      </div>
+                    )}
+                    {(sport === 'TrailRun' || sport === 'Run') && stats.vamTotal && stats.vamCount > 0 && (
+                      <div>
+                        <span className="text-neutral-400">VAM:</span>
+                        <span className="font-semibold">{Math.round(stats.vamTotal / stats.vamCount)} m/h</span>
                       </div>
                     )}
                   </div>
@@ -1421,8 +1465,18 @@ function DashboardContent() {
                   </span>
                 </div>
                 <div>
-                  <span className="block text-neutral-400 text-xs">Esfuerzo</span>
-                  <span className="block text-base sm:text-lg font-semibold text-white">{activity.suffer_score || 'N/A'}</span>
+                  <span className="block text-neutral-400 text-xs">
+                    {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0
+                      ? 'VAM' 
+                      : 'Esfuerzo'}
+                  </span>
+                  <span className="block text-base sm:text-lg font-semibold text-white">
+                    {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0
+                      ? calculateVAM(activity.total_elevation_gain, activity.moving_time)
+                      : activity.suffer_score || 'N/A'}
+                    {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0 && 
+                      <span className="text-xs text-neutral-300"> m/h</span>}
+                  </span>
                 </div>
               </div>
             </div>

@@ -114,7 +114,7 @@ function HomeContent() {
           by Dan Bueno
         </p>
         <p className="text-neutral-300 text-center mb-6 sm:mb-8 text-sm sm:text-base">
-          Calcula automáticamente la proporción de desnivel/distancia para tus actividades de carrera por montaña
+          Analiza automáticamente la intensidad (TheRatio) y el rendimiento (TheVAM) de tus carreras por montaña
         </p>
 
         {errorMessage && (
@@ -145,10 +145,20 @@ function HomeContent() {
         <div className="mt-6 sm:mt-8 border-t border-neutral-700 pt-4 sm:pt-6">
           <h2 className="text-white font-medium text-sm sm:text-base mb-2">¿Qué hace TheRatio?</h2>
           <p className="text-neutral-400 text-xs sm:text-sm mb-3">
-            TheRatio muestra tus últimas actividades y sus detalles. Además calcula automáticamente la proporción entre el desnivel positivo y la distancia (metros de desnivel por kilómetro) para tus actividades de TrailRun en Strava.
+            TheRatio muestra tus últimas actividades y sus detalles. Calcula automáticamente dos métricas clave para tus actividades de TrailRun en Strava:
           </p>
+          <ul className="text-neutral-400 text-xs sm:text-sm mb-3 space-y-2 pl-4">
+            <li className="flex items-start">
+              <span className="text-orange-500 mr-2">🏔️</span>
+              <span><strong className="text-orange-400">TheRatio:</strong> Proporción entre desnivel y distancia (m/km) - mide la intensidad del terreno</span>
+            </li>
+            <li className="flex items-start">
+              <span className="text-orange-500 mr-2">⬆️</span>
+              <span><strong className="text-orange-400">TheVAM:</strong> Velocidad de Ascenso Vertical (m/h) - mide tu rendimiento en subidas</span>
+            </li>
+          </ul>
           <p className="text-neutral-400 text-xs sm:text-sm">
-            Cuando subas una nueva actividad, añadiremos automáticamente un comentario con el ratio calculado para que puedas comparar la dificultad de diferentes rutas.
+            Cuando subas una nueva actividad, añadiremos automáticamente un comentario con estas métricas calculadas con precisión, permitiéndote analizar y comparar tu rendimiento entre diferentes rutas.
           </p>
         </div>
         

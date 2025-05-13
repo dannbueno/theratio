@@ -911,7 +911,9 @@ function DashboardContent() {
       // Ocultar campos redundantes que ya se muestran en la cabecera
       'name', 'start_date',
       // Ocultar sport_type ya que lo mostraremos en la cabecera
-      'sport_type'
+      'sport_type',
+      // Ocultar VAM, Tiempo en ascenso y Metros subidos (ya mostrados en la sección superior)
+      'vam', 'climbTime', 'climbMeters'
     ];
     
     // Orden preferido de los campos

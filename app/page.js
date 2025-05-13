@@ -11,6 +11,23 @@ function HomeContent() {
   const code = searchParams.get('code');
   const [errorMessage, setErrorMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [userName, setUserName] = useState('');
+
+  // Obtener el nombre del usuario al cargar la página (desde localStorage si existe)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedName = localStorage.getItem('userName');
+      if (savedName) {
+        setUserName(savedName);
+      } else {
+        // Si no hay nombre guardado, podríamos solicitar el nombre aquí o dejarlo en blanco
+        // Por ahora, usaremos un nombre por defecto para demostración
+        const defaultName = 'Dan';
+        setUserName(defaultName);
+        localStorage.setItem('userName', defaultName);
+      }
+    }
+  }, []);
 
   // Manejar código de autorización recibido de Strava
   useEffect(() => {
@@ -80,6 +97,7 @@ function HomeContent() {
     return (
       <main className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-4">
         <div className="max-w-md w-full bg-neutral-800 rounded-2xl p-6 sm:p-8 shadow-lg text-center">
+          <h2 className="text-orange-400 font-bold text-lg sm:text-xl mb-1">¡Hola {userName}!</h2>
           <h1 className="text-xl sm:text-2xl font-bold text-white mb-4">Conectando con Strava...</h1>
           <p className="text-neutral-300 mb-6">Por favor espera mientras procesamos tu autorización</p>
           <div className="w-10 sm:w-12 h-10 sm:h-12 border-t-2 border-orange-500 border-solid rounded-full animate-spin mx-auto"></div>
@@ -91,6 +109,7 @@ function HomeContent() {
   return (
     <main className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-neutral-800 rounded-2xl p-5 sm:p-8 shadow-lg">
+        <h2 className="text-orange-400 font-bold text-lg sm:text-xl text-center mb-1">¡Hola {userName}!</h2>
         <h1 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2">TheRatio</h1>
         <p className="text-neutral-300 text-center mb-2">
           by Dan Bueno

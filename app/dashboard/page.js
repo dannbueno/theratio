@@ -1107,7 +1107,7 @@ function DashboardContent() {
           
           {/* Sección para TheRatio y TheVAM en actividades de montaña */}
           {activity.sport_type === 'TrailRun' && (
-            <div className="mb-4 p-3 bg-gradient-to-br from-orange-900/40 via-orange-800/20 to-transparent border border-orange-800/50 rounded-lg">
+            <div className="mb-4 p-3 bg-neutral-800 border border-neutral-700 rounded-lg">
               <div className="flex flex-wrap items-center gap-3 sm:gap-6">
                 <div>
                   <div className="text-xs text-neutral-300">🏔️ TheRatio</div>
@@ -1620,7 +1620,7 @@ function DashboardContent() {
               </div>
               
               {/* Sección de detalles (grid adaptativo) */}
-              <div className="flex-1 w-full grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-x-2 sm:gap-x-4 gap-y-2 items-center text-center sm:ml-2">
+              <div className="flex-1 w-full grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-x-2 sm:gap-x-4 gap-y-2 items-center text-center sm:ml-2">
                 <div>
                   <span className="block text-neutral-400 text-xs">Distancia</span>
                   <span className="block text-base sm:text-lg font-semibold text-white">{formatDistanceShort(activity.distance)} km</span>
@@ -1663,24 +1663,6 @@ function DashboardContent() {
                           ? 'min/km' 
                           : 'km/h'}
                     </span>
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-neutral-400 text-xs">
-                    {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0
-                      ? 'VAM' 
-                      : 'Esfuerzo'}
-                  </span>
-                  <span className="block text-base sm:text-lg font-semibold text-white">
-                    {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0
-                      ? calculateVAM(activity.total_elevation_gain, activity.moving_time, activity.climbTime, activity.climbMeters)
-                      : activity.suffer_score || 'N/A'}
-                    {(activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && activity.total_elevation_gain > 0 && (
-                      <span className="text-xs text-neutral-300"> m/h</span>
-                    )}
-                    {activity.climbTime && activity.climbMeters && (
-                      <span className="text-[9px] block text-green-400/80">Subida efectiva</span>
-                    )}
                   </span>
                 </div>
               </div>

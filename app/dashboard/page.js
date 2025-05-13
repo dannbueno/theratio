@@ -824,9 +824,9 @@ function DashboardContent() {
     const renderField = (key) => {
       if (!activity[key] && activity[key] !== 0) return null;
       return (
-        <div key={key} className="border border-neutral-800 rounded-lg py-1.5 px-3 inline-flex flex-col">
+        <div key={key} className="border border-neutral-800 rounded-lg py-1.5 px-2 sm:px-3 inline-flex flex-col">
           <span className="text-neutral-400 text-xs">{getFieldLabel(key, activity.sport_type)}</span>
-          <span className="text-white font-semibold mt-0.5">
+          <span className="text-white font-semibold mt-0.5 text-sm sm:text-base">
             {formatValueWithUnit(key, activity[key])}
           </span>
         </div>
@@ -848,21 +848,21 @@ function DashboardContent() {
       );
     
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-0 sm:p-4" onClick={onClose}>
         <div
-          className="bg-neutral-900 rounded-2xl shadow-2xl p-5 max-w-4xl w-[620px] relative text-white max-h-[90vh] overflow-y-auto"
+          className="bg-neutral-900 rounded-2xl shadow-2xl p-4 sm:p-5 w-full sm:max-w-4xl sm:w-[620px] relative text-white max-h-[95vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
           ref={modalRef}
         >
           <div className="flex justify-between items-center mb-3">
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">{getIcon(activity.type)}</span>
-              <div>
-                <h2 className="text-xl font-bold">{activity.name}</h2>
-                <div className="flex items-center text-neutral-400 text-sm gap-1">
-                  <span>{formatDate(activity.start_date)}</span>
-                  <span className="text-neutral-300 mx-1">•</span>
-                  <span className="text-orange-400 font-medium">{sportTypeLabels[activity.sport_type] || activity.sport_type}</span>
+            <div className="flex items-center gap-2 max-w-[80%]">
+              <span className="text-xl sm:text-2xl">{getIcon(activity.type)}</span>
+              <div className="min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold text-white truncate">{activity.name}</h2>
+                <div className="flex items-center text-neutral-400 text-xs sm:text-sm gap-1">
+                  <span className="truncate">{formatDate(activity.start_date)}</span>
+                  <span className="text-neutral-300 mx-1 hidden sm:inline">•</span>
+                  <span className="text-orange-400 font-medium truncate">{sportTypeLabels[activity.sport_type] || activity.sport_type}</span>
                 </div>
               </div>
             </div>
@@ -889,7 +889,7 @@ function DashboardContent() {
           </div>
           
           {showCopyNotification && (
-            <div className="absolute top-12 right-12 mt-1 bg-green-800 text-white text-xs py-1 px-2 rounded whitespace-nowrap">
+            <div className="absolute top-12 right-4 sm:right-12 mt-1 bg-green-800 text-white text-xs py-1 px-2 rounded whitespace-nowrap">
               Imagen guardada
             </div>
           )}
@@ -905,28 +905,28 @@ function DashboardContent() {
           )}
           
           {/* Pestañas de navegación */}
-          <div className="flex border-b border-neutral-700 mb-4">
+          <div className="flex border-b border-neutral-700 mb-4 overflow-x-auto scrollbar-hide">
             <button
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'datos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'datos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
               onClick={() => setActiveTab('datos')}
             >
               Datos
             </button>
             <button
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'mapa' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'mapa' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
               onClick={() => setActiveTab('mapa')}
             >
               Mapa
             </button>
             <button
-              className={`px-4 py-2 font-medium text-sm ${activeTab === 'graficos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'graficos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
               onClick={() => setActiveTab('graficos')}
             >
               Gráficos
             </button>
             {hasMedia && (
               <button
-                className={`px-4 py-2 font-medium text-sm ${activeTab === 'media' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+                className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'media' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
                 onClick={() => setActiveTab('media')}
               >
                 Fotos
@@ -935,7 +935,7 @@ function DashboardContent() {
           </div>
           
           {/* Contenido de las pestañas con ancho y altura fijos */}
-          <div className="h-[360px] w-full overflow-y-auto">
+          <div className="h-[300px] sm:h-[360px] w-full overflow-y-auto">
             {/* Pestaña de Datos */}
             {activeTab === 'datos' && (
               <>
@@ -1049,13 +1049,13 @@ function DashboardContent() {
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-sm text-neutral-400">Contenido multimedia ({activityMedia.length})</h3>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                           {activityMedia.map((media, index) => (
                             <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 hover:brightness-110 transition-all">
                               {media.type === 'photo' ? (
                                 <>
                                   <div 
-                                    className="cursor-pointer h-[320px] overflow-hidden" 
+                                    className="cursor-pointer h-[220px] sm:h-[320px] overflow-hidden" 
                                     onClick={() => openImageViewer(media, index)}
                                   >
                                     {/* Imagen ajustada a altura óptima */}
@@ -1073,7 +1073,7 @@ function DashboardContent() {
                                   )}
                                 </>
                               ) : media.type === 'video' && (
-                                <div className="h-[320px] overflow-hidden">
+                                <div className="h-[220px] sm:h-[320px] overflow-hidden">
                                   {/* Video ajustado a altura óptima */}
                                   {media.url.includes('youtube') ? (
                                     <iframe
@@ -1120,13 +1120,13 @@ function DashboardContent() {
               onClick={() => setSelectedImage(null)}
             >
               <div 
-                className="relative max-w-[90vw] max-h-[90vh]"
+                className="relative max-w-[95vw] max-h-[95vh]"
                 onClick={(e) => e.stopPropagation()}
               >
                 <img 
                   src={selectedImage.urls ? (selectedImage.urls['1000'] || selectedImage.urls['600']) : selectedImage.url} 
                   alt="Foto de la actividad" 
-                  className="max-w-full max-h-[90vh] object-contain"
+                  className="max-w-full max-h-[95vh] object-contain"
                 />
                 {selectedImage.caption && (
                   <div className="absolute bottom-0 left-0 right-0 bg-black/60 p-3 text-white">
@@ -1147,24 +1147,24 @@ function DashboardContent() {
                 {activityMedia.filter(m => m.type === 'photo').length > 1 && (
                   <>
                     <button 
-                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none z-50 cursor-pointer"
+                      className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none z-50 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         navigateImages(-1);
                       }}
                     >
-                      <span className="text-3xl">&lsaquo;</span>
+                      <span className="text-2xl sm:text-3xl">&lsaquo;</span>
                     </button>
                     <button 
-                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-12 h-12 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none z-50 cursor-pointer"
+                      className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black/60 text-white w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center hover:bg-black/80 focus:outline-none z-50 cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
                         e.preventDefault();
                         navigateImages(1);
                       }}
                     >
-                      <span className="text-3xl">&rsaquo;</span>
+                      <span className="text-2xl sm:text-3xl">&rsaquo;</span>
                     </button>
                     
                     {/* Indicador de imagen actual */}
@@ -1219,43 +1219,43 @@ function DashboardContent() {
       days = 30;
     }
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-0 sm:p-4" onClick={onClose}>
         <div
-          className="bg-neutral-900 rounded-2xl shadow-2xl p-8 max-w-lg w-full relative text-white max-h-[90vh] overflow-y-auto"
+          className="bg-neutral-900 rounded-2xl shadow-2xl p-5 sm:p-8 w-full sm:max-w-lg relative text-white max-h-[95vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
           <button
-            className="absolute top-4 right-4 text-2xl text-neutral-400 hover:text-white focus:outline-none"
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 text-2xl text-neutral-400 hover:text-white focus:outline-none"
             onClick={onClose}
             aria-label="Cerrar"
           >
             ×
           </button>
-          <h2 className="text-2xl font-bold mb-4">Resumen</h2>
-          <div className="flex gap-2 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold mb-4">Resumen</h2>
+          <div className="flex flex-wrap gap-2 mb-6">
             {Object.entries(ranges).map(([key, label]) => (
               <button
                 key={key}
-                className={`px-3 py-1 rounded-full font-medium transition-colors ${tab === key ? 'bg-orange-500 text-white' : 'bg-white/10 text-orange-200 hover:bg-orange-600/30'}`}
+                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${tab === key ? 'bg-orange-500 text-white' : 'bg-white/10 text-orange-200 hover:bg-orange-600/30'}`}
                 onClick={() => setTab(key)}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 text-sm">
             <div><b>Resumen por deporte:</b></div>
-            {Object.keys(statsBySport).length === 0 && <div className="text-neutral-400 text-sm">No hay actividades en este periodo.</div>}
+            {Object.keys(statsBySport).length === 0 && <div className="text-neutral-400">No hay actividades en este periodo.</div>}
             {Object.entries(statsBySport).map(([sport, stats]) => (
-              <div key={sport} className="border-b border-neutral-800 py-2 text-sm">
+              <div key={sport} className="border-b border-neutral-800 py-2">
                 <div className="font-semibold mb-1">{sportTypeLabels[sport] || sport}</div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1 mb-1">
+                <div className="flex flex-wrap gap-x-4 sm:gap-x-6 gap-y-1 mb-1">
                   <div><span className="text-neutral-400">Duración:</span> <span className="font-semibold">{formatHMS(stats.duration)}</span></div>
                   {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Km totales:</span> <span className="font-semibold">{stats.km.toFixed(2)}</span></div>}
                   {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Desnivel total:</span> <span className="font-semibold">{stats.elevation.toFixed(0)} m</span></div>}
                   <div><span className="text-neutral-400">Nº actividades:</span> <span className="font-semibold">{stats.count}</span></div>
                 </div>
-                <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-orange-200">
+                <div className="flex flex-wrap gap-x-4 sm:gap-x-6 gap-y-1 text-orange-200">
                   <span className="font-semibold">Media:</span>
                   <div><span className="text-neutral-400">Duración:</span> <span className="font-semibold">{formatHMS(Math.round(stats.duration / stats.count))}</span></div>
                   {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Km:</span> <span className="font-semibold">{(stats.km / stats.count).toFixed(2)}</span></div>}
@@ -1282,15 +1282,15 @@ function DashboardContent() {
                 </div>
               </div>
             ))}
-            <div className="mt-4 flex justify-between border-b border-neutral-800 py-1 text-sm">
+            <div className="mt-4 flex justify-between border-b border-neutral-800 py-1">
               <span><b>Tiempo total entrenado:</b></span>
               <span className="font-semibold">{formatHMS(totalTime)}</span>
             </div>
-            <div className="flex justify-between border-b border-neutral-800 py-1 text-sm">
+            <div className="flex justify-between border-b border-neutral-800 py-1">
               <span><b>Desnivel positivo total:</b></span>
               <span className="font-semibold">{totalElevation.toFixed(0)} m</span>
             </div>
-            <div className="flex justify-between border-b border-neutral-800 py-1 text-sm">
+            <div className="flex justify-between border-b border-neutral-800 py-1">
               <span><b>Entreno medio diario:</b></span>
               <span className="font-semibold">{formatHMS(Math.round(totalTime / days))}</span>
             </div>
@@ -1331,18 +1331,18 @@ function DashboardContent() {
               <p className="text-neutral-400 text-sm">de {athleteName}</p>
             )}
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
-              className="bg-white/10 text-white px-4 py-2 rounded-lg font-medium hover:bg-white/20 transition-colors"
+              className="bg-white/10 text-white px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-medium hover:bg-white/20 transition-colors"
               onClick={() => setShowSummary(true)}
             >
               Resumen
             </button>
             <button
-              className="bg-white/10 text-white px-4 py-2 rounded-lg font-medium hover:bg-white/20 transition-colors"
+              className="bg-white/10 text-white px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-medium hover:bg-white/20 transition-colors"
               onClick={() => window.location.href = '/'}
             >
-              Volver al inicio
+              Volver
             </button>
           </div>
         </div>
@@ -1350,12 +1350,13 @@ function DashboardContent() {
           {activities.map((activity) => (
             <div
               key={activity.id}
-              className="bg-neutral-800 rounded-xl shadow-md px-6 py-3 flex items-center border border-neutral-700 hover:border-orange-400 transition-all cursor-pointer"
+              className="bg-neutral-800 rounded-xl shadow-md px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center border border-neutral-700 hover:border-orange-400 transition-all cursor-pointer"
               onClick={() => setSelectedActivity(activity)}
             >
-              <div className="flex items-center gap-3 min-w-[260px] max-w-[260px]">
+              {/* Sección superior (siempre visible) con icono y nombre */}
+              <div className="flex items-center gap-3 w-full sm:w-auto sm:min-w-[260px] sm:max-w-[260px] mb-2 sm:mb-0">
                 <span className="text-2xl md:text-3xl flex-shrink-0">{getIcon(activity.sport_type || activity.type)}</span>
-                <div className="flex flex-col min-w-0">
+                <div className="flex flex-col min-w-0 flex-1">
                   <div
                     className="text-lg md:text-xl font-bold text-white leading-tight truncate cursor-pointer"
                     title={activity.name}
@@ -1365,22 +1366,24 @@ function DashboardContent() {
                   <div className="text-neutral-400 text-xs md:text-sm truncate">{formatDate(activity.start_date)}</div>
                 </div>
               </div>
-              <div className="flex-1 grid grid-cols-2 md:grid-cols-6 gap-x-4 gap-y-1 items-center text-center ml-2">
+              
+              {/* Sección de detalles (grid adaptativo) */}
+              <div className="flex-1 w-full grid grid-cols-3 sm:grid-cols-3 md:grid-cols-6 gap-x-2 sm:gap-x-4 gap-y-2 items-center text-center sm:ml-2">
                 <div>
                   <span className="block text-neutral-400 text-xs">Distancia</span>
-                  <span className="block text-lg font-semibold text-white">{formatDistanceShort(activity.distance)} km</span>
+                  <span className="block text-base sm:text-lg font-semibold text-white">{formatDistanceShort(activity.distance)} km</span>
                 </div>
                 <div>
                   <span className="block text-neutral-400 text-xs">Duración</span>
-                  <span className="block text-lg font-semibold text-white">{formatDuration(activity.moving_time)}</span>
+                  <span className="block text-base sm:text-lg font-semibold text-white">{formatDuration(activity.moving_time)}</span>
                 </div>
                 <div>
                   <span className="block text-neutral-400 text-xs">Elevación</span>
-                  <span className="block text-lg font-semibold text-white">{Math.round(activity.total_elevation_gain)}<span className="text-xs text-neutral-300"> m</span></span>
+                  <span className="block text-base sm:text-lg font-semibold text-white">{Math.round(activity.total_elevation_gain)}<span className="text-xs text-neutral-300"> m</span></span>
                 </div>
                 <div>
                   <span className="block text-neutral-400 text-xs">{activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? 'Ritmo medio' : 'V. media'}</span>
-                  <span className="block text-lg font-semibold text-white">
+                  <span className="block text-base sm:text-lg font-semibold text-white">
                     {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' 
                       ? formatPaceShort(activity.average_speed) 
                       : formatSpeedShort(activity.average_speed)}
@@ -1395,7 +1398,7 @@ function DashboardContent() {
                         ? 'Ritmo máx' 
                         : 'V. máx'}
                   </span>
-                  <span className="block text-lg font-semibold text-white">
+                  <span className="block text-base sm:text-lg font-semibold text-white">
                     {activity.sport_type === 'TrailRun'
                       ? formatElevationRatio(activity.total_elevation_gain, activity.distance)
                       : activity.sport_type === 'Run'
@@ -1411,8 +1414,8 @@ function DashboardContent() {
                   </span>
                 </div>
                 <div>
-                  <span className="block text-neutral-400 text-xs">Esfuerzo Relativo</span>
-                  <span className="block text-lg font-semibold text-white">{activity.suffer_score || 'N/A'}</span>
+                  <span className="block text-neutral-400 text-xs">Esfuerzo</span>
+                  <span className="block text-base sm:text-lg font-semibold text-white">{activity.suffer_score || 'N/A'}</span>
                 </div>
               </div>
             </div>

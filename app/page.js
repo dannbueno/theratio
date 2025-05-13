@@ -79,10 +79,10 @@ function HomeContent() {
   if (loading) {
     return (
       <main className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-neutral-800 rounded-2xl p-8 shadow-lg text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Conectando con Strava...</h1>
+        <div className="max-w-md w-full bg-neutral-800 rounded-2xl p-6 sm:p-8 shadow-lg text-center">
+          <h1 className="text-xl sm:text-2xl font-bold text-white mb-4">Conectando con Strava...</h1>
           <p className="text-neutral-300 mb-6">Por favor espera mientras procesamos tu autorización</p>
-          <div className="w-12 h-12 border-t-2 border-orange-500 border-solid rounded-full animate-spin mx-auto"></div>
+          <div className="w-10 sm:w-12 h-10 sm:h-12 border-t-2 border-orange-500 border-solid rounded-full animate-spin mx-auto"></div>
         </div>
       </main>
     );
@@ -90,12 +90,12 @@ function HomeContent() {
 
   return (
     <main className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-4">
-      <div className="max-w-md w-full bg-neutral-800 rounded-2xl p-8 shadow-lg">
-        <h1 className="text-3xl font-bold text-white text-center mb-2">TheRatio</h1>
+      <div className="w-full max-w-md bg-neutral-800 rounded-2xl p-5 sm:p-8 shadow-lg">
+        <h1 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2">TheRatio</h1>
         <p className="text-neutral-300 text-center mb-2">
           by Dan Bueno
         </p>
-        <p className="text-neutral-300 text-center mb-8">
+        <p className="text-neutral-300 text-center mb-6 sm:mb-8 text-sm sm:text-base">
           Calcula automáticamente la proporción de desnivel/distancia para tus actividades de carrera por montaña
         </p>
 
@@ -120,21 +120,21 @@ function HomeContent() {
           Conectar con Strava
         </button>
 
-        <div className="mt-6 text-neutral-400 text-sm text-center">
+        <div className="mt-4 sm:mt-6 text-neutral-400 text-xs sm:text-sm text-center">
           <p>Conecta tu cuenta de Strava para ver tus actividades y todos sus datos</p>
         </div>
 
-        <div className="mt-8 border-t border-neutral-700 pt-6">
-          <h2 className="text-white font-medium mb-2">¿Qué hace TheRatio?</h2>
-          <p className="text-neutral-400 text-sm mb-3">
+        <div className="mt-6 sm:mt-8 border-t border-neutral-700 pt-4 sm:pt-6">
+          <h2 className="text-white font-medium text-sm sm:text-base mb-2">¿Qué hace TheRatio?</h2>
+          <p className="text-neutral-400 text-xs sm:text-sm mb-3">
             TheRatio muestra tus últimas actividades y sus detalles. Además calcula automáticamente la proporción entre el desnivel positivo y la distancia (metros de desnivel por kilómetro) para tus actividades de TrailRun en Strava.
           </p>
-          <p className="text-neutral-400 text-sm">
+          <p className="text-neutral-400 text-xs sm:text-sm">
             Cuando subas una nueva actividad, añadiremos automáticamente un comentario con el ratio calculado para que puedas comparar la dificultad de diferentes rutas.
           </p>
         </div>
         
-        <div className="mt-8 border-t border-neutral-700 pt-6 flex justify-center space-x-6">
+        <div className="mt-6 sm:mt-8 border-t border-neutral-700 pt-4 sm:pt-6 flex justify-center space-x-6">
           <a 
             href="https://www.instagram.com/dannbueno" 
             target="_blank" 

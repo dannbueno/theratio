@@ -109,7 +109,6 @@ function HomeContent() {
   return (
     <main className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-md bg-neutral-800 rounded-2xl p-5 sm:p-8 shadow-lg">
-        <h2 className="text-orange-400 font-bold text-lg sm:text-xl text-center mb-1">¡Hola {userName}!</h2>
         <h1 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2">TheRatio</h1>
         <p className="text-neutral-300 text-center mb-2">
           by Dan Bueno

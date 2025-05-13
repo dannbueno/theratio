@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getValidAccessToken } from '../../../../lib/strava.js';
+import { calculatePreciseVAM, formatClimbTime } from '../../../../lib/strava.js';
 
 // Exportar como dinámica explícitamente
 export const dynamic = 'force-dynamic';
@@ -28,100 +30,127 @@ export async function GET(request) {
   }
 }
 
-// Función para identificar segmentos de subida y calcular VAM preciso
-async function calculatePreciseVAM(activityId, accessToken) {
+// Función para verificar y actualizar comentarios existentes
+async function updateActivityWithTheRatio(accessToken, activityId, activityDetails, vamData) {
   try {
-    // Obtener datos de stream para la actividad (altitud, distancia y tiempo)
-    const streamsResponse = await fetch(
-      `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=altitude,distance,time&key_by_type=true`,
-      {
-        headers: { 'Authorization': `Bearer ${accessToken}` }
+    // Extraer datos necesarios
+    const elevationGain = activityDetails.total_elevation_gain;
+    const distanceKm = activityDetails.distance * METERS_TO_KM;
+    const ratio = distanceKm > 0 ? elevationGain / distanceKm : 0;
+    const standardVam = activityDetails.moving_time > 0 ? 
+      elevationGain / (activityDetails.moving_time * SECONDS_TO_HOURS) : 0;
+    
+    // Usar VAM preciso si está disponible, o el estándar como respaldo
+    const vam = vamData?.vam || Math.round(standardVam);
+    
+    // Preparar las partes del comentario
+    const commentParts = [];
+    let shouldComment = false;
+    
+    // Añadir THE RATIO si es relevante
+    if (ratio >= MIN_RATIO_FOR_COMMENT) {
+      commentParts.push(`🏔️ TheRatio: ${ratio.toFixed(1)} m/km`);
+      shouldComment = true;
+    }
+    
+    // Añadir VAM si es relevante
+    if (vam >= MIN_VAM_FOR_COMMENT) {
+      if (vamData?.vam && vamData.climbTime && vamData.climbMeters) {
+        commentParts.push(`⬆️ TheVAM: ${vam} m/h (${Math.round(vamData.climbMeters)}m / ${formatClimbTime(vamData.climbTime)})`);
+      } else {
+        commentParts.push(`⬆️ TheVAM: ${Math.round(vam)} m/h`);
       }
-    );
-    
-    if (!streamsResponse.ok) {
-      console.error('Error obteniendo streams:', await streamsResponse.text());
-      // Si no podemos obtener los streams, retornamos null para usar el método básico
-      return { vam: null, climbTime: null, climbMeters: null };
+      shouldComment = true;
     }
     
-    const streams = await streamsResponse.json();
-    
-    // Verificar que tenemos todos los datos necesarios
-    if (!streams.altitude || !streams.distance || !streams.time) {
-      console.log('Faltan streams necesarios para el cálculo preciso');
-      return { vam: null, climbTime: null, climbMeters: null };
+    // Solo continuar si al menos uno de los valores supera el umbral
+    if (!shouldComment) {
+      console.log(`Actividad ${activityId} no alcanza los umbrales mínimos para comentar`);
+      return {
+        updated: false,
+        reason: 'Métricas no alcanzan umbrales mínimos',
+        vam,
+        ratio: ratio.toFixed(1)
+      };
     }
     
-    const altitudes = streams.altitude.data;
-    const distances = streams.distance.data;
-    const times = streams.time.data;
+    // Añadir línea final con crédito
+    commentParts.push(`Calculated by TheRatio https://theratio.vercel.app`);
     
-    // Variables para acumular datos de subidas
-    let totalClimbTime = 0; // Tiempo total en subidas (segundos)
-    let totalClimbMeters = 0; // Metros totales ascendidos
-    let inClimbSegment = false;
-    let segmentStartIndex = 0;
-    let currentClimbMeters = 0;
+    // Unir las partes del comentario
+    const theRatioComment = commentParts.join('\n');
     
-    // Procesar los datos punto por punto para identificar subidas
-    for (let i = 1; i < altitudes.length; i++) {
-      const altitudeDiff = altitudes[i] - altitudes[i-1];
-      const distanceDiff = distances[i] - distances[i-1];
+    // Extraer descripción actual
+    let description = activityDetails.description || '';
+    
+    // Verificar si ya existe un comentario de TheRatio
+    const ratioLineRegExp = /🏔️ TheRatio: \d+\.\d+ m\/km/;
+    const vamLineRegExp = /⬆️ TheVAM: \d+ m\/h/;
+    const calculatedByRegExp = /Calculated by TheRatio/;
+    
+    // Si ya existe un comentario de TheRatio, reemplazarlo
+    if (ratioLineRegExp.test(description) || 
+        vamLineRegExp.test(description) || 
+        calculatedByRegExp.test(description)) {
       
-      // Calcular pendiente en porcentaje (altitud/distancia horizontal * 100)
-      const gradient = distanceDiff > 0 ? (altitudeDiff / distanceDiff) * 100 : 0;
+      // Dividir por líneas
+      const lines = description.split('\n');
       
-      // Si es una subida significativa
-      if (gradient >= MIN_GRADIENT_FOR_CLIMB && altitudeDiff > 0) {
-        if (!inClimbSegment) {
-          // Inicio de un nuevo segmento de subida
-          inClimbSegment = true;
-          segmentStartIndex = i-1;
-          currentClimbMeters = 0;
-        }
-        // Acumular metros ascendidos
-        currentClimbMeters += altitudeDiff;
-      } else if (inClimbSegment) {
-        // Fin de un segmento de subida
-        if (currentClimbMeters >= MIN_ELEVATION_GAIN_FOR_SEGMENT) {
-          // Solo considerar segmentos con desnivel mínimo
-          const segmentTime = times[i-1] - times[segmentStartIndex];
-          totalClimbTime += segmentTime;
-          totalClimbMeters += currentClimbMeters;
-          console.log(`Segmento de subida identificado: ${currentClimbMeters.toFixed(1)}m en ${segmentTime}s`);
-        }
-        inClimbSegment = false;
-      }
+      // Filtrar líneas de TheRatio
+      const filteredLines = lines.filter(line => 
+        !ratioLineRegExp.test(line) && 
+        !vamLineRegExp.test(line) && 
+        !calculatedByRegExp.test(line)
+      );
+      
+      // Reconstruir descripción sin las líneas de TheRatio
+      description = filteredLines.join('\n');
     }
     
-    // Comprobar si estamos en un segmento de subida al final de la actividad
-    if (inClimbSegment && currentClimbMeters >= MIN_ELEVATION_GAIN_FOR_SEGMENT) {
-      const segmentTime = times[times.length-1] - times[segmentStartIndex];
-      totalClimbTime += segmentTime;
-      totalClimbMeters += currentClimbMeters;
-      console.log(`Segmento final de subida: ${currentClimbMeters.toFixed(1)}m en ${segmentTime}s`);
+    // Añadir un salto de línea si la descripción no está vacía y no termina en uno
+    if (description && !description.endsWith('\n\n')) {
+      description = description.trim() + '\n\n';
     }
     
-    // Calcular VAM preciso (solo si hay datos válidos)
-    let vam = null;
-    if (totalClimbTime > 0 && totalClimbMeters > 0) {
-      // Convertir tiempo de segundos a horas
-      const climbTimeHours = totalClimbTime * SECONDS_TO_HOURS;
-      vam = Math.round(totalClimbMeters / climbTimeHours);
-      console.log(`VAM preciso calculado: ${vam} m/h (${totalClimbMeters.toFixed(1)}m en ${totalClimbTime}s)`);
-    } else {
-      console.log('No se identificaron segmentos de subida significativos');
+    // Añadir el nuevo comentario
+    const newDescription = description + theRatioComment;
+    
+    // Actualizar la actividad con el nuevo comentario
+    const updateResponse = await fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        description: newDescription
+      })
+    });
+    
+    if (!updateResponse.ok) {
+      console.error('Error actualizando actividad:', await updateResponse.text());
+      return {
+        updated: false,
+        reason: 'Error al actualizar actividad',
+        error: updateResponse.status
+      };
     }
     
-    return { 
-      vam, 
-      climbTime: totalClimbTime, 
-      climbMeters: totalClimbMeters 
+    console.log(`Actividad ${activityId} actualizada con comentarios de TheRatio`);
+    return {
+      updated: true,
+      vam,
+      ratio: ratio.toFixed(1),
+      preciseVam: !!vamData?.vam,
+      description: newDescription
     };
   } catch (error) {
-    console.error('Error calculando VAM preciso:', error);
-    return { vam: null, climbTime: null, climbMeters: null };
+    console.error('Error procesando actividad:', error);
+    return {
+      updated: false,
+      reason: 'Error procesando actividad',
+      error: error.message
+    };
   }
 }
 
@@ -137,11 +166,10 @@ export async function POST(request) {
       const activityId = data.object_id;
       const ownerId = data.owner_id;
 
-      // Aquí deberías buscar en tu base de datos el token de acceso del usuario
-      // Para simplificar, usamos una variable de entorno (no recomendado en producción)
-      const accessToken = process.env.STRAVA_ACCESS_TOKEN;
+      // Obtener token de acceso válido para el usuario
+      const accessToken = await getValidAccessToken(ownerId);
 
-      // Si no tienes token, no puedes continuar
+      // Si no hay token, no podemos continuar
       if (!accessToken) {
         console.error('No se encontró token de acceso para el usuario:', ownerId);
         return NextResponse.json({ error: 'Token no encontrado' }, { status: 400 });
@@ -163,88 +191,18 @@ export async function POST(request) {
       if ((activityDetails.sport_type === 'TrailRun' || activityDetails.sport_type === 'Run') && 
           activityDetails.total_elevation_gain > 0) {
         
-        // Calcular ratio elevación/distancia (metros de desnivel por km)
-        const elevationGain = activityDetails.total_elevation_gain;
-        const distanceKm = activityDetails.distance * METERS_TO_KM;
-        const movingTimeHours = activityDetails.moving_time * SECONDS_TO_HOURS;
+        // Calcular VAM preciso
+        const vamData = await calculatePreciseVAM(activityId, accessToken);
         
-        // Calcular VAM estándar como respaldo
-        const standardVam = movingTimeHours > 0 ? elevationGain / movingTimeHours : 0;
+        // Actualizar actividad con TheRatio/TheVAM
+        const updateResult = await updateActivityWithTheRatio(
+          accessToken, 
+          activityId, 
+          activityDetails, 
+          vamData
+        );
         
-        // Intentar calcular VAM preciso identificando subidas específicas
-        const { vam: preciseVam, climbTime, climbMeters } = await calculatePreciseVAM(activityId, accessToken);
-        
-        // Usar VAM preciso si está disponible, sino usar el estándar
-        const vam = preciseVam || standardVam;
-        
-        let commentParts = [];
-        let shouldComment = false;
-        
-        // Calcular y añadir ratio si es relevante
-        if (distanceKm > 0) {
-          const ratio = elevationGain / distanceKm;
-          if (ratio >= MIN_RATIO_FOR_COMMENT) {
-            commentParts.push(`🏔️ THE RATIO: ${ratio.toFixed(1)} m/km de desnivel`);
-            shouldComment = true;
-          }
-        }
-        
-        // Añadir VAM si es relevante
-        if (vam >= MIN_VAM_FOR_COMMENT) {
-          // Si es VAM preciso, añadir más detalles
-          if (preciseVam && climbTime && climbMeters) {
-            const climbTimeMinutes = Math.round(climbTime / 60);
-            commentParts.push(`⬆️ VAM: ${Math.round(vam)} m/h (${Math.round(climbMeters)}m en ${climbTimeMinutes}min efectivos de subida)`);
-          } else {
-            commentParts.push(`⬆️ VAM: ${Math.round(vam)} m/h`);
-          }
-          shouldComment = true;
-        }
-        
-        // Solo comentar si al menos uno de los valores supera el umbral
-        if (shouldComment) {
-          // Unir las partes del comentario
-          const comment = commentParts.join('\n');
-          
-          // Actualizar la actividad con el comentario
-          const updateResponse = await fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
-            method: 'PUT',
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              description: activityDetails.description 
-                ? `${activityDetails.description}\n\n${comment}` 
-                : comment
-            })
-          });
-          
-          if (!updateResponse.ok) {
-            console.error('Error actualizando actividad:', await updateResponse.text());
-            return NextResponse.json({ error: 'Error al actualizar actividad' }, { status: 500 });
-          }
-          
-          console.log(`Actividad ${activityId} actualizada con comentarios: ${comment}`);
-          return NextResponse.json({ 
-            success: true, 
-            message: 'Actividad actualizada con métricas',
-            vam: vam > 0 ? Math.round(vam) : null,
-            precise_vam: preciseVam !== null,
-            climb_time: climbTime,
-            climb_meters: climbMeters,
-            ratio: distanceKm > 0 ? (elevationGain / distanceKm).toFixed(1) : null
-          });
-        } else {
-          console.log(`Actividad ${activityId} no alcanza los umbrales mínimos para comentar`);
-          return NextResponse.json({ 
-            success: true, 
-            message: 'Métricas no alcanzan umbrales mínimos',
-            vam: vam > 0 ? Math.round(vam) : null,
-            precise_vam: preciseVam !== null,
-            ratio: distanceKm > 0 ? (elevationGain / distanceKm).toFixed(1) : null
-          });
-        }
+        return NextResponse.json(updateResult);
       } else {
         console.log(`Actividad ${activityId} ignorada. Tipo: ${activityDetails.sport_type}`);
         return NextResponse.json({ 

@@ -905,7 +905,7 @@ function DashboardContent() {
           )}
           
           {/* Pestañas de navegación */}
-          <div className="flex border-b border-neutral-700 mb-4 overflow-x-auto scrollbar-hide">
+          <div className="flex border-b border-neutral-700 mb-4 overflow-x-auto">
             <button
               className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'datos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
               onClick={() => setActiveTab('datos')}

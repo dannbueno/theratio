@@ -172,7 +172,9 @@ function DashboardContent() {
     end_longitude: 'Longitud fin',
     sport_type: 'Deporte',
     average_temp: 'Temperatura Media',
-    vam: 'VAM',
+    vam: 'TheVAM',
+    climbTime: 'Tiempo en ascenso',
+    climbMeters: 'Metros subidos',
     // Añade más traducciones si lo necesitas
   };
 
@@ -376,11 +378,25 @@ function DashboardContent() {
     return Math.round(elevationGain / movingTimeHours);
   };
 
+  // Formatear tiempo de ascenso
+  const formatClimbTime = (seconds) => {
+    if (!seconds) return "";
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (hours > 0) {
+      return `${hours}h${minutes.toString().padStart(2, '0')}`;
+    } else {
+      return `${minutes}min`;
+    }
+  };
+
   // Formatear VAM para mostrar
   const formatVAM = (vam, climbTime = null, climbMeters = null) => {
+    if (!vam) return "—";
+    
     if (climbTime && climbMeters) {
-      const climbTimeMinutes = Math.round(climbTime / 60);
-      return `${vam} m/h (${Math.round(climbMeters)}m en ${climbTimeMinutes}min efectivos)`;
+      return `${vam} m/h (${Math.round(climbMeters)}m / ${formatClimbTime(climbTime)})`;
     }
     return `${vam} m/h`;
   };
@@ -655,6 +671,11 @@ function DashboardContent() {
       }
       
       try {
+        // Parámetros para el cálculo de VAM
+        const MIN_GRADIENT_FOR_CLIMB = 1; // Pendiente mínima en % (bajado de 2% a 1%)
+        const MIN_ELEVATION_GAIN_FOR_SEGMENT = 5; // Mínimo desnivel para segmentos (bajado de 10m a 5m)
+        const SMOOTHING_WINDOW = 5; // Número de puntos para promediar (suavizado)
+        
         // Intentar obtener los streams para calcular VAM preciso
         const streamsResponse = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=altitude,distance,time&key_by_type=true`, {
           headers: { 'Authorization': `Bearer ${token}` }
@@ -684,16 +705,37 @@ function DashboardContent() {
         let segmentStartIndex = 0;
         let currentClimbMeters = 0;
         
-        // Identificar segmentos de subida (pendiente > 2%)
-        for (let i = 1; i < altitudes.length; i++) {
-          const altitudeDiff = altitudes[i] - altitudes[i-1];
+        // Función para suavizar los datos de altitud
+        function smoothAltitude(index) {
+          let sum = 0;
+          let count = 0;
+          
+          for (let i = Math.max(0, index - Math.floor(SMOOTHING_WINDOW/2)); 
+               i <= Math.min(altitudes.length - 1, index + Math.floor(SMOOTHING_WINDOW/2)); 
+               i++) {
+            sum += altitudes[i];
+            count++;
+          }
+          
+          return sum / count;
+        }
+        
+        // Crear array de altitud suavizada
+        const smoothedAltitudes = [];
+        for (let i = 0; i < altitudes.length; i++) {
+          smoothedAltitudes[i] = smoothAltitude(i);
+        }
+        
+        // Identificar segmentos de subida
+        for (let i = 1; i < smoothedAltitudes.length; i++) {
+          const altitudeDiff = smoothedAltitudes[i] - smoothedAltitudes[i-1];
           const distanceDiff = distances[i] - distances[i-1];
           
           // Calcular pendiente en porcentaje
           const gradient = distanceDiff > 0 ? (altitudeDiff / distanceDiff) * 100 : 0;
           
           // Si es una subida significativa
-          if (gradient >= 2 && altitudeDiff > 0) {
+          if (gradient >= MIN_GRADIENT_FOR_CLIMB && altitudeDiff > 0) {
             if (!inClimbSegment) {
               // Inicio de un nuevo segmento de subida
               inClimbSegment = true;
@@ -703,9 +745,28 @@ function DashboardContent() {
             // Acumular metros ascendidos
             currentClimbMeters += altitudeDiff;
           } else if (inClimbSegment) {
+            // Permitimos pequeñas interrupciones en la subida (hasta 3 puntos consecutivos)
+            // sin terminar el segmento, para manejar pequeños llanos o descensos
+            let resumesClimbing = false;
+            for (let j = 1; j <= 3 && i + j < smoothedAltitudes.length; j++) {
+              const futureAltDiff = smoothedAltitudes[i + j] - smoothedAltitudes[i + j - 1];
+              const futureDistDiff = distances[i + j] - distances[i + j - 1];
+              const futureGradient = futureDistDiff > 0 ? (futureAltDiff / futureDistDiff) * 100 : 0;
+              
+              if (futureGradient >= MIN_GRADIENT_FOR_CLIMB && futureAltDiff > 0) {
+                resumesClimbing = true;
+                break;
+              }
+            }
+            
+            if (resumesClimbing) {
+              // La subida continúa, no hacemos nada y seguimos en el mismo segmento
+              continue;
+            }
+            
             // Fin de un segmento de subida
-            if (currentClimbMeters >= 10) {
-              // Solo considerar segmentos con desnivel mínimo (10m)
+            if (currentClimbMeters >= MIN_ELEVATION_GAIN_FOR_SEGMENT) {
+              // Solo considerar segmentos con desnivel mínimo
               const segmentTime = times[i-1] - times[segmentStartIndex];
               totalClimbTime += segmentTime;
               totalClimbMeters += currentClimbMeters;
@@ -715,7 +776,7 @@ function DashboardContent() {
         }
         
         // Comprobar si estamos en un segmento de subida al final de la actividad
-        if (inClimbSegment && currentClimbMeters >= 10) {
+        if (inClimbSegment && currentClimbMeters >= MIN_ELEVATION_GAIN_FOR_SEGMENT) {
           const segmentTime = times[times.length-1] - times[segmentStartIndex];
           totalClimbTime += segmentTime;
           totalClimbMeters += currentClimbMeters;
@@ -733,9 +794,16 @@ function DashboardContent() {
           activity.climbTime = totalClimbTime;
           activity.climbMeters = totalClimbMeters;
           activity.vam = calculateVAM(null, null, totalClimbTime, totalClimbMeters);
+          
+          // Comparar cobertura de desnivel
+          const percentCovered = (totalClimbMeters / activity.total_elevation_gain) * 100;
+          console.log(`VAM: Desnivel detectado: ${Math.round(totalClimbMeters)}m (${percentCovered.toFixed(1)}% del total de ${Math.round(activity.total_elevation_gain)}m)`);
+          console.log(`VAM: Tiempo en subida: ${formatClimbTime(totalClimbTime)}`);
+          console.log(`VAM: Valor calculado: ${activity.vam} m/h`);
         } else {
           // Usar VAM estándar si no hay datos precisos
           activity.vam = calculateVAM(activity.total_elevation_gain, activity.moving_time);
+          console.log(`VAM: Usando cálculo estándar: ${activity.vam} m/h`);
         }
       } catch (error) {
         console.error('Error obteniendo datos precisos de VAM:', error);
@@ -848,33 +916,11 @@ function DashboardContent() {
     
     // Orden preferido de los campos
     const fieldOrder = [
-      // Datos principales (alta prioridad)
-      'distance',
-      'moving_time',
-      'elapsed_time',
-      'total_elevation_gain',
-      'average_speed',
-      'max_speed',
-      'average_heartrate',
-      'max_heartrate',
-      // Datos secundarios
-      'average_cadence',
-      'average_watts',
-      'max_watts',
-      'weighted_average_watts',
-      'suffer_score',
-      'calories',
-      'average_temp',
-      'elev_high',
-      'elev_low',
-      // Datos menos relevantes
-      'start_latitude',
-      'start_longitude',
-      'end_latitude',
-      'end_longitude',
+      'distance', 'moving_time', 'elapsed_time', 'total_elevation_gain',
+      // Luego otros campos...
     ];
-    
-    // Agrupar campos por categorías
+
+    // Grupos de campos para organizar la visualización
     const fieldGroups = {
       primary: ['distance', 'moving_time', 'elapsed_time', 'total_elevation_gain'],
       performance: ['average_speed', 'max_speed', 'average_heartrate', 'max_heartrate', 'average_cadence'],
@@ -930,6 +976,21 @@ function DashboardContent() {
       }
       if (key === 'max_speed' && !(activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
         return `${formatSpeedShort(value)} km/h`;
+      }
+      
+      // Formatear VAM con unidades y datos de subida
+      if (key === 'vam') {
+        return formatVAM(value, activity.climbTime, activity.climbMeters);
+      }
+      
+      // Formatear tiempo de ascenso
+      if (key === 'climbTime') {
+        return formatClimbTime(value);
+      }
+      
+      // Formatear metros de subida (sin decimales)
+      if (key === 'climbMeters') {
+        return `${Math.round(value)} m`;
       }
       
       if (isIsoDate(value)) return formatDateField(value);
@@ -1044,12 +1105,27 @@ function DashboardContent() {
             </div>
           )}
           
-          {/* Ratio de elevación destacado para actividades TrailRun */}
+          {/* Sección para TheRatio y TheVAM en actividades de montaña */}
           {activity.sport_type === 'TrailRun' && (
-            <div className="mb-3 p-2 bg-gradient-to-r from-orange-900/40 to-transparent border border-orange-800/50 rounded-lg">
-              <div className="text-xs text-neutral-300">Ratio de desnivel</div>
-              <div className="text-orange-400 font-bold text-lg">
-                {formatElevationRatio(activity.total_elevation_gain, activity.distance)} m+/km
+            <div className="mb-4 p-3 bg-gradient-to-br from-orange-900/40 via-orange-800/20 to-transparent border border-orange-800/50 rounded-lg">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+                <div>
+                  <div className="text-xs text-neutral-300">🏔️ TheRatio</div>
+                  <div className="text-orange-400 font-bold text-lg">
+                    {formatElevationRatio(activity.total_elevation_gain, activity.distance)} m/km
+                  </div>
+                </div>
+                {activity.vam > 0 && (
+                  <div>
+                    <div className="text-xs text-neutral-300">⬆️ TheVAM</div>
+                    <div className="text-orange-400 font-bold text-lg">
+                      {activity.climbTime && activity.climbMeters 
+                        ? `${activity.vam} m/h (${Math.round(activity.climbMeters)}m / ${formatClimbTime(activity.climbTime)})`
+                        : `${activity.vam} m/h`
+                      }
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

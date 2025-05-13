@@ -1221,7 +1221,7 @@ function DashboardContent() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-0 sm:p-4" onClick={onClose}>
         <div
-          className="bg-neutral-900 rounded-2xl shadow-2xl p-5 sm:p-8 w-full sm:max-w-lg relative text-white max-h-[95vh] overflow-y-auto"
+          className="bg-neutral-900 rounded-2xl shadow-2xl p-4 sm:p-6 w-full sm:max-w-lg relative text-white max-h-[92vh] sm:max-h-[85vh] overflow-y-auto"
           onClick={e => e.stopPropagation()}
         >
           <button
@@ -1231,68 +1231,75 @@ function DashboardContent() {
           >
             ×
           </button>
-          <h2 className="text-xl sm:text-2xl font-bold mb-4">Resumen</h2>
-          <div className="flex flex-wrap gap-2 mb-6">
+          <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4 pr-8">Resumen</h2>
+          <div className="flex flex-wrap gap-2 mb-4 sm:mb-6">
             {Object.entries(ranges).map(([key, label]) => (
               <button
                 key={key}
-                className={`px-3 py-1 rounded-full text-sm font-medium transition-colors ${tab === key ? 'bg-orange-500 text-white' : 'bg-white/10 text-orange-200 hover:bg-orange-600/30'}`}
+                className={`px-3 py-1 rounded-full text-xs sm:text-sm font-medium transition-colors ${tab === key ? 'bg-orange-500 text-white' : 'bg-white/10 text-orange-200 hover:bg-orange-600/30'}`}
                 onClick={() => setTab(key)}
               >
                 {label}
               </button>
             ))}
           </div>
-          <div className="space-y-2 text-sm">
-            <div><b>Resumen por deporte:</b></div>
-            {Object.keys(statsBySport).length === 0 && <div className="text-neutral-400">No hay actividades en este periodo.</div>}
+          <div className="space-y-2 text-xs sm:text-sm">
+            <div className="font-bold text-sm sm:text-base">Resumen por deporte:</div>
+            {Object.keys(statsBySport).length === 0 && <div className="text-neutral-400 py-2">No hay actividades en este periodo.</div>}
             {Object.entries(statsBySport).map(([sport, stats]) => (
               <div key={sport} className="border-b border-neutral-800 py-2">
-                <div className="font-semibold mb-1">{sportTypeLabels[sport] || sport}</div>
-                <div className="flex flex-wrap gap-x-4 sm:gap-x-6 gap-y-1 mb-1">
+                <div className="flex items-center gap-1.5 font-semibold mb-1.5">
+                  <span className="text-base sm:text-lg">{getIcon(sport)}</span>
+                  <span>{sportTypeLabels[sport] || sport}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-2 sm:gap-x-4 gap-y-1 mb-1.5">
                   <div><span className="text-neutral-400">Duración:</span> <span className="font-semibold">{formatHMS(stats.duration)}</span></div>
                   {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Km totales:</span> <span className="font-semibold">{stats.km.toFixed(2)}</span></div>}
-                  {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Desnivel total:</span> <span className="font-semibold">{stats.elevation.toFixed(0)} m</span></div>}
-                  <div><span className="text-neutral-400">Nº actividades:</span> <span className="font-semibold">{stats.count}</span></div>
+                  {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Desnivel:</span> <span className="font-semibold">{stats.elevation.toFixed(0)} m</span></div>}
+                  <div><span className="text-neutral-400">Actividades:</span> <span className="font-semibold">{stats.count}</span></div>
                 </div>
-                <div className="flex flex-wrap gap-x-4 sm:gap-x-6 gap-y-1 text-orange-200">
-                  <span className="font-semibold">Media:</span>
-                  <div><span className="text-neutral-400">Duración:</span> <span className="font-semibold">{formatHMS(Math.round(stats.duration / stats.count))}</span></div>
-                  {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Km:</span> <span className="font-semibold">{(stats.km / stats.count).toFixed(2)}</span></div>}
-                  {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Desnivel:</span> <span className="font-semibold">{(stats.elevation / stats.count).toFixed(0)} m</span></div>}
-                  {sport === 'Run' || sport === 'TrailRun' ? (
-                    <div>
-                      <span className="text-neutral-400">Ritmo medio:</span>
-                      <span className="font-semibold">{formatPaceShort((stats.km * 1000) / stats.duration)} min/km</span>
-                    </div>
-                  ) : (
-                    sport !== 'WeightTraining' && (
+                <div className="mt-1 pt-1 border-t border-neutral-800/50">
+                  <div className="text-orange-300/90 font-medium text-xs mb-1">Valores promedio:</div>
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-x-2 sm:gap-x-4 gap-y-1 text-orange-200/80">
+                    <div><span className="text-neutral-400">Duración:</span> <span className="font-semibold">{formatHMS(Math.round(stats.duration / stats.count))}</span></div>
+                    {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Km:</span> <span className="font-semibold">{(stats.km / stats.count).toFixed(2)}</span></div>}
+                    {sport !== 'WeightTraining' && <div><span className="text-neutral-400">Desnivel:</span> <span className="font-semibold">{(stats.elevation / stats.count).toFixed(0)} m</span></div>}
+                    {sport === 'Run' || sport === 'TrailRun' ? (
                       <div>
-                        <span className="text-neutral-400">Vel. media:</span>
-                        <span className="font-semibold">{formatSpeedShort((stats.km * 1000) / stats.duration)} km/h</span>
+                        <span className="text-neutral-400">Ritmo:</span>
+                        <span className="font-semibold">{formatPaceShort((stats.km * 1000) / stats.duration)} min/km</span>
                       </div>
-                    )
-                  )}
-                  {sport === 'TrailRun' && (
-                    <div>
-                      <span className="text-neutral-400">Ratio medio:</span>
-                      <span className="font-semibold">{formatElevationRatio(stats.elevation, stats.km * 1000)} m+/km</span>
-                    </div>
-                  )}
+                    ) : (
+                      sport !== 'WeightTraining' && (
+                        <div>
+                          <span className="text-neutral-400">Vel.:</span>
+                          <span className="font-semibold">{formatSpeedShort((stats.km * 1000) / stats.duration)} km/h</span>
+                        </div>
+                      )
+                    )}
+                    {sport === 'TrailRun' && (
+                      <div>
+                        <span className="text-neutral-400">Ratio:</span>
+                        <span className="font-semibold">{formatElevationRatio(stats.elevation, stats.km * 1000)} m+/km</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
-            <div className="mt-4 flex justify-between border-b border-neutral-800 py-1">
-              <span><b>Tiempo total entrenado:</b></span>
-              <span className="font-semibold">{formatHMS(totalTime)}</span>
-            </div>
-            <div className="flex justify-between border-b border-neutral-800 py-1">
-              <span><b>Desnivel positivo total:</b></span>
-              <span className="font-semibold">{totalElevation.toFixed(0)} m</span>
-            </div>
-            <div className="flex justify-between border-b border-neutral-800 py-1">
-              <span><b>Entreno medio diario:</b></span>
-              <span className="font-semibold">{formatHMS(Math.round(totalTime / days))}</span>
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <div className="bg-neutral-800/60 rounded-lg p-2 sm:p-3">
+                <div className="text-neutral-400 text-xs">Tiempo total</div>
+                <div className="font-semibold text-base">{formatHMS(totalTime)}</div>
+              </div>
+              <div className="bg-neutral-800/60 rounded-lg p-2 sm:p-3">
+                <div className="text-neutral-400 text-xs">Desnivel total</div>
+                <div className="font-semibold text-base">{totalElevation.toFixed(0)} m</div>
+              </div>
+              <div className="bg-neutral-800/60 rounded-lg p-2 sm:p-3">
+                <div className="text-neutral-400 text-xs">Media diaria</div>
+                <div className="font-semibold text-base">{formatHMS(Math.round(totalTime / days))}</div>
+              </div>
             </div>
           </div>
         </div>

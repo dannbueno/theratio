@@ -126,10 +126,42 @@ function DashboardContent() {
   const [selectedActivity, setSelectedActivity] = useState(null);
   const [showSummary, setShowSummary] = useState(false);
   const [summaryTab, setSummaryTab] = useState('week');
-  const token = searchParams.get('token');
+  const [urlToken, setUrlToken] = useState(searchParams.get('token'));
+  const [apiToken, setApiToken] = useState(null);
 
   // Antes de la parte del botón de comentario
   const [userId, setUserId] = useState(null);
+
+  // Obtener token de la API si no existe en URL
+  useEffect(() => {
+    async function getTokenFromApi() {
+      if (!urlToken) {
+        try {
+          const response = await fetch('/api/auth/me');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.token) {
+              setApiToken(data.token);
+            } else {
+              // Si no hay token en la API, redirigir a inicio
+              window.location.href = '/';
+            }
+          } else {
+            // Si hay error en la API, redirigir a inicio
+            window.location.href = '/';
+          }
+        } catch (error) {
+          console.error('Error obteniendo token de API:', error);
+          window.location.href = '/';
+        }
+      }
+    }
+    
+    getTokenFromApi();
+  }, [urlToken]);
+
+  // Token efectivo (de URL o API)
+  const token = urlToken || apiToken;
 
   // En useEffect, obtener el ID de usuario al cargar
   useEffect(() => {
@@ -444,7 +476,7 @@ function DashboardContent() {
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [addingComment, setAddingComment] = useState(false);
     const [commentStatus, setCommentStatus] = useState(null);
-    const token = searchParams.get('token');
+    const modalToken = token; // Usar el token efectivo del componente padre
     
     // Cerrar modal con la tecla ESC
     useEffect(() => {
@@ -463,7 +495,7 @@ function DashboardContent() {
     
     // Verificar si la actividad tiene fotos o videos
     useEffect(() => {
-      if (activity && token) {
+      if (activity && modalToken) {
         console.log('Verificando media, foto_count:', activity.photo_count, 'total_photo_count:', activity.total_photo_count);
         
         // Verificar si hay fotos disponibles (photo_count o total_photo_count > 0)
@@ -486,7 +518,7 @@ function DashboardContent() {
               if (hasPhotos) {
                 console.log('Fetching photos for activity:', activity.id);
                 const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/photos?size=600`, {
-                  headers: { 'Authorization': `Bearer ${token}` }
+                  headers: { 'Authorization': `Bearer ${modalToken}` }
                 });
                 
                 if (!response.ok) {
@@ -527,7 +559,7 @@ function DashboardContent() {
           fetchActivityMedia();
         }
       }
-    }, [activity, token, activeTab]);
+    }, [activity, modalToken, activeTab]);
     
     // Cargar streams de datos cuando el usuario cambia a la pestaña de mapa o gráficos
     useEffect(() => {
@@ -538,14 +570,14 @@ function DashboardContent() {
         activityStreams.polyline.length === 0 && 
         !loading && 
         activity && 
-        token
+        modalToken
       ) {
         const fetchActivityStreams = async () => {
           setLoading(true);
           try {
             // Obtener datos del polilinea y otros streams
             const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=latlng,distance,altitude,heartrate,time&key_by_type=true`, {
-              headers: { 'Authorization': `Bearer ${token}` }
+              headers: { 'Authorization': `Bearer ${modalToken}` }
             });
             
             if (!response.ok) {
@@ -579,7 +611,7 @@ function DashboardContent() {
         
         fetchActivityStreams();
       }
-    }, [activeTab, activityStreams.polyline.length, loading, activity, token]);
+    }, [activeTab, activityStreams.polyline.length, loading, activity, modalToken]);
     
     // Cerrar visor de imágenes con tecla ESC
     useEffect(() => {
@@ -703,7 +735,7 @@ function DashboardContent() {
         
         // Intentar obtener los streams para calcular VAM preciso
         const streamsResponse = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=altitude,distance,time&key_by_type=true`, {
-          headers: { 'Authorization': `Bearer ${token}` }
+          headers: { 'Authorization': `Bearer ${modalToken}` }
         });
         
         if (!streamsResponse.ok) {

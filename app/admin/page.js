@@ -176,8 +176,8 @@ export default function AdminPage() {
         )}
         
         <div className="mt-8 text-center">
-          <a href="/" className="text-orange-400 hover:text-orange-300">
-            Volver a la página principal
+          <a href="/dashboard" className="text-orange-400 hover:text-orange-300">
+            Volver al dashboard
           </a>
         </div>
       </div>

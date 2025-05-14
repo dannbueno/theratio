@@ -1700,9 +1700,20 @@ function DashboardContent() {
             </button>
             <button
               className="bg-white/10 text-white px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-medium hover:bg-white/20 transition-colors"
-              onClick={() => window.location.href = '/'}
+              onClick={async () => {
+                try {
+                  // Llamar al endpoint de cierre de sesión
+                  await fetch('/api/auth/logout');
+                  // Redirigir a la página principal
+                  window.location.href = '/';
+                } catch (error) {
+                  console.error('Error al cerrar sesión:', error);
+                  // En caso de error, redirigir de todas formas
+                  window.location.href = '/';
+                }
+              }}
             >
-              Volver
+              Cerrar sesión
             </button>
           </div>
         </div>

@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { cookies } from 'next/client';
 
 export default function AdminPage() {
   const [sessions, setSessions] = useState([]);
@@ -11,12 +10,22 @@ export default function AdminPage() {
   const [token, setToken] = useState(null);
   
   useEffect(() => {
-    // Intentar obtener el token de autenticación desde las cookies
-    const cookiesList = document.cookie.split(';');
-    const tokenCookie = cookiesList.find(cookie => cookie.trim().startsWith('strava_access_token='));
-    if (tokenCookie) {
-      setToken(tokenCookie.split('=')[1]);
-    }
+    // Obtener el token de autenticación mediante la API
+    const fetchUserData = async () => {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.token) {
+            setToken(data.token);
+          }
+        }
+      } catch (error) {
+        console.error('Error al obtener información del usuario:', error);
+      }
+    };
+    
+    fetchUserData();
     
     const fetchSessions = async () => {
       try {

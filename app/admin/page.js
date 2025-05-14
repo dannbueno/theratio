@@ -1,14 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { cookies } from 'next/client';
 
 export default function AdminPage() {
   const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [token, setToken] = useState(null);
   
   useEffect(() => {
+    // Intentar obtener el token de autenticación desde las cookies
+    const cookiesList = document.cookie.split(';');
+    const tokenCookie = cookiesList.find(cookie => cookie.trim().startsWith('strava_access_token='));
+    if (tokenCookie) {
+      setToken(tokenCookie.split('=')[1]);
+    }
+    
     const fetchSessions = async () => {
       try {
         setLoading(true);
@@ -176,7 +185,10 @@ export default function AdminPage() {
         )}
         
         <div className="mt-8 text-center">
-          <a href="/dashboard" className="text-orange-400 hover:text-orange-300">
+          <a 
+            href={token ? `/dashboard?token=${token}` : '/dashboard'} 
+            className="text-orange-400 hover:text-orange-300"
+          >
             Volver al dashboard
           </a>
         </div>

@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 // Constantes
 const METERS_TO_KM = 0.001;
 const MIN_RATIO_FOR_COMMENT = 10; // Umbral mínimo para comentar
-const MIN_VAM_FOR_COMMENT = 500; // Umbral mínimo para comentar VAM (metros/hora)
+const MIN_VAM_FOR_COMMENT = 250; // Umbral mínimo para comentar VAM (metros/hora)
 const SECONDS_TO_HOURS = 1 / 3600; // Conversión de segundos a horas
 const MIN_ELEVATION_GAIN_FOR_SEGMENT = 10; // Mínimo desnivel para considerar un segmento de subida (en metros)
 const MIN_GRADIENT_FOR_CLIMB = 2; // Pendiente mínima en % para considerar una subida

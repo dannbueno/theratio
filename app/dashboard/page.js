@@ -128,6 +128,29 @@ function DashboardContent() {
   const [summaryTab, setSummaryTab] = useState('week');
   const token = searchParams.get('token');
 
+  // Antes de la parte del botón de comentario
+  const [userId, setUserId] = useState(null);
+
+  // En useEffect, obtener el ID de usuario al cargar
+  useEffect(() => {
+    // Intentar obtener el ID de usuario de la sesión o de las cookies
+    async function getUserId() {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.id) {
+            setUserId(data.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error obteniendo ID de usuario:', error);
+      }
+    }
+    
+    getUserId();
+  }, []);
+
   // Función para obtener las etiquetas de campo adecuadas según el tipo de deporte
   const getFieldLabel = (field, sportType) => {
     if ((sportType === 'Run' || sportType === 'TrailRun') && field === 'average_speed') {
@@ -419,6 +442,8 @@ function DashboardContent() {
     const [hasMedia, setHasMedia] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [addingComment, setAddingComment] = useState(false);
+    const [commentStatus, setCommentStatus] = useState(null);
     const token = searchParams.get('token');
     
     // Cerrar modal con la tecla ESC
@@ -1128,6 +1153,87 @@ function DashboardContent() {
                     </div>
                   </div>
                 )}
+                
+                {/* Botón para añadir comentario */}
+                <div className="ml-auto">
+                  <button
+                    className={`px-3 py-1.5 rounded text-sm font-medium ${
+                      addingComment 
+                        ? 'bg-neutral-600 text-neutral-300 cursor-not-allowed' 
+                        : commentStatus?.updated 
+                          ? 'bg-green-600 hover:bg-green-700 text-white'
+                          : 'bg-orange-600 hover:bg-orange-700 text-white'
+                    } transition-colors`}
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      
+                      if (addingComment) return;
+                      
+                      try {
+                        setAddingComment(true);
+                        setCommentStatus(null);
+                        
+                        // Obtener el ID de atleta, primero del estado y si no de la actividad
+                        const athleteId = userId || activity.athlete?.id;
+                        
+                        if (!athleteId) {
+                          console.error('No se pudo obtener el ID de atleta');
+                          setCommentStatus({ updated: false, error: 'No se pudo obtener el ID de atleta' });
+                          return;
+                        }
+                        
+                        // Llamar al endpoint para añadir comentario
+                        const response = await fetch('/api/strava/add-comment', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            activityId: activity.id,
+                            userId: athleteId
+                          }),
+                        });
+                        
+                        const result = await response.json();
+                        
+                        // Actualizar estado con el resultado
+                        setCommentStatus(result);
+                        
+                        console.log('Resultado de añadir comentario:', result);
+                      } catch (error) {
+                        console.error('Error al añadir comentario:', error);
+                        setCommentStatus({ 
+                          updated: false, 
+                          error: error.message || 'Error desconocido' 
+                        });
+                      } finally {
+                        setAddingComment(false);
+                      }
+                    }}
+                    disabled={addingComment}
+                  >
+                    {addingComment ? (
+                      <span className="flex items-center justify-center gap-1">
+                        <span className="animate-spin">⟳</span> Añadiendo...
+                      </span>
+                    ) : commentStatus?.updated ? (
+                      <span className="flex items-center justify-center gap-1">
+                        ✓ Comentario añadido
+                      </span>
+                    ) : (
+                      <span className="flex items-center justify-center gap-1">
+                        💬 Añadir comentario
+                      </span>
+                    )}
+                  </button>
+                  
+                  {/* Mensaje de estado */}
+                  {commentStatus && !commentStatus.updated && (
+                    <div className="mt-1 text-xs text-red-400">
+                      Error: {commentStatus.reason || commentStatus.error || 'Desconocido'}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

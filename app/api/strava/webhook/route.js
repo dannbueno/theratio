@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getValidAccessToken } from '../../../../lib/strava.js';
-import { calculatePreciseVAM, formatClimbTime } from '../../../../lib/strava.js';
+import { calculatePreciseVAM, updateActivityWithTheRatio } from '../../../../lib/strava.js';
 
 // Exportar como dinámica explícitamente
 export const dynamic = 'force-dynamic';

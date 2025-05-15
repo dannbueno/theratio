@@ -1,0 +1,11 @@
+{
+  "extends": "next/core-web-vitals",
+  "rules": {
+    "react/no-unescaped-entities": "off",
+    "react/display-name": "off",
+    "@next/next/no-page-custom-font": "off",
+    "react/jsx-key": "off",
+    "react/no-unknown-property": "off",
+    "react-hooks/exhaustive-deps": "off"
+  }
+} 

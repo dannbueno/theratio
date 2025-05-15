@@ -1,10 +1,4 @@
 {
-  "version": 2,
-  "buildCommand": "npm run build",
-  "devCommand": "npm run dev",
-  "installCommand": "npm install",
-  "framework": "nextjs",
-  "rewrites": [
-    { "source": "/metrics", "destination": "/metrics" }
-  ]
+  "buildCommand": "next build",
+  "framework": "nextjs"
 } 

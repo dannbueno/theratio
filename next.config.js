@@ -6,9 +6,5 @@ module.exports = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  output: 'export',
-  distDir: 'out',
-  images: {
-    unoptimized: true
-  }
+  transpilePackages: ['react-leaflet', 'leaflet']
 } 

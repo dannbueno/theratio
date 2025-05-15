@@ -1,4 +1,11 @@
 {
-  "buildCommand": "next build",
-  "framework": "nextjs"
+  "buildCommand": "SKIP_ESLINT_CHECK=true next build",
+  "framework": "nextjs",
+  "installCommand": "npm install",
+  "regions": ["sfo1"],
+  "env": {
+    "NEXT_PUBLIC_BASE_URL": "https://theratio.vercel.app",
+    "NEXT_PUBLIC_STRAVA_CLIENT_ID": "129187",
+    "NEXT_TELEMETRY_DISABLED": "1"
+  }
 } 

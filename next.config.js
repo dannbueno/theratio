@@ -1,10 +1,16 @@
 /** @type {import('next').NextConfig} */
-module.exports = {
+const nextConfig = {
+  reactStrictMode: false,
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
-  transpilePackages: ['react-leaflet', 'leaflet']
-} 
+  transpilePackages: ['react-leaflet', 'leaflet'],
+  experimental: {
+    esmExternals: 'loose'
+  }
+};
+
+module.exports = nextConfig; 

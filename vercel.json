@@ -1,20 +1,6 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "skipEslintCheck": true,
-        "nodeVersion": "18.x"
-      }
-    }
-  ],
   "env": {
     "NEXT_PUBLIC_BASE_URL": "https://theratio.vercel.app",
-    "NEXT_PUBLIC_STRAVA_CLIENT_ID": "129187",
-    "NEXT_TELEMETRY_DISABLED": "1",
-    "SKIP_ESLINT_CHECK": "true",
-    "NEXT_IGNORE_ESLINT": "1"
+    "NEXT_PUBLIC_STRAVA_CLIENT_ID": "129187"
   }
 } 

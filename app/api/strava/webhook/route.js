@@ -67,6 +67,29 @@ export async function POST(request) {
       if ((activityDetails.sport_type === 'TrailRun' || activityDetails.sport_type === 'Run') && 
           activityDetails.total_elevation_gain > 0) {
         
+        // Calcular métricas para verificar umbrales
+        const elevationGain = activityDetails.total_elevation_gain;
+        const distanceKm = activityDetails.distance * METERS_TO_KM;
+        const ratio = distanceKm > 0 ? elevationGain / distanceKm : 0;
+        
+        // Calcular VAM estándar (se usará como respaldo si no hay VAM preciso)
+        const standardVam = activityDetails.moving_time > 0 ? 
+          elevationGain / (activityDetails.moving_time / 3600) : 0;
+        
+        // Verificar si la actividad cumple los requisitos mínimos
+        const meetsRatioThreshold = ratio >= MIN_RATIO_FOR_COMMENT;
+        const meetsVamThreshold = standardVam >= MIN_VAM_FOR_COMMENT;
+        
+        if (!meetsRatioThreshold && !meetsVamThreshold) {
+          console.log(`Actividad ${activityId} no cumple los umbrales mínimos. Ratio: ${ratio.toFixed(1)}, VAM: ${Math.round(standardVam)}`);
+          return NextResponse.json({ 
+            success: true, 
+            message: 'Actividad no alcanza umbrales mínimos para comentar',
+            ratio: ratio.toFixed(1),
+            vam: Math.round(standardVam)
+          });
+        }
+        
         // Calcular VAM preciso
         const vamData = await calculatePreciseVAM(activityId, accessToken);
         

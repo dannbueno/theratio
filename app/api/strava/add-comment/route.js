@@ -6,6 +6,11 @@ import { updateActivityWithTheRatio } from '../../../../lib/strava.js';
 // Exportar como dinámica explícitamente
 export const dynamic = 'force-dynamic';
 
+// Constantes - mismos valores que en lib/strava.js
+const METERS_TO_KM = 0.001;
+const MIN_RATIO_FOR_COMMENT = 10; // Umbral mínimo para comentar
+const MIN_VAM_FOR_COMMENT = 250; // Umbral mínimo para comentar VAM (metros/hora)
+
 // Endpoint POST para añadir comentario manualmente
 export async function POST(request) {
   try {
@@ -44,6 +49,30 @@ export async function POST(request) {
     if ((activityDetails.sport_type === 'TrailRun' || activityDetails.sport_type === 'Run') && 
         activityDetails.total_elevation_gain > 0) {
       
+      // Calcular métricas para verificar umbrales
+      const elevationGain = activityDetails.total_elevation_gain;
+      const distanceKm = activityDetails.distance * METERS_TO_KM;
+      const ratio = distanceKm > 0 ? elevationGain / distanceKm : 0;
+      
+      // Calcular VAM estándar (se usará como respaldo si no hay VAM preciso)
+      const standardVam = activityDetails.moving_time > 0 ? 
+        elevationGain / (activityDetails.moving_time / 3600) : 0;
+      
+      // Verificar si la actividad cumple los requisitos mínimos
+      const meetsRatioThreshold = ratio >= MIN_RATIO_FOR_COMMENT;
+      const meetsVamThreshold = standardVam >= MIN_VAM_FOR_COMMENT;
+      
+      if (!meetsRatioThreshold && !meetsVamThreshold) {
+        return NextResponse.json({ 
+          updated: false, 
+          reason: 'La actividad no alcanza los umbrales mínimos para comentar',
+          ratio: ratio.toFixed(1),
+          vam: Math.round(standardVam),
+          min_ratio: MIN_RATIO_FOR_COMMENT,
+          min_vam: MIN_VAM_FOR_COMMENT
+        }, { status: 400 });
+      }
+      
       // Calcular VAM preciso
       const vamData = await calculatePreciseVAM(activityId, accessToken);
       
@@ -61,8 +90,8 @@ export async function POST(request) {
       });
     } else {
       return NextResponse.json({ 
-        success: false, 
-        message: 'Tipo de actividad no procesable o sin elevación'
+        updated: false, 
+        reason: 'Tipo de actividad no procesable o sin elevación'
       }, { status: 400 });
     }
   } catch (error) {

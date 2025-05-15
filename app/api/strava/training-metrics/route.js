@@ -1,6 +1,9 @@
 import { getAthleteTrainingMetrics } from '../../../../lib/postgres';
 import { NextResponse } from 'next/server';
 
+// Asegurar renderizado dinámico
+export const dynamic = 'force-dynamic';
+
 // GET /api/strava/training-metrics
 export async function GET(request) {
   try {

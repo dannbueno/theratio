@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { saveAthleteSession } from '../../../../../lib/postgres';
+import { savePgSession } from '../../../../../lib/postgres';
 
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ async function saveSession(userData) {
     console.log('Intentando guardar sesión para:', userData.athlete.id);
     
     // Guardar sesión en PostgreSQL
-    const result = await saveAthleteSession(userData);
+    const result = await savePgSession(userData);
     
     if (result) {
       console.log(`Sesión guardada para ${userData.athlete.firstname} ${userData.athlete.lastname}`);
@@ -101,7 +101,7 @@ export async function POST(request) {
         athlete_type: athlete.athlete_type || null
       };
       
-      await saveAthleteSession(session);
+      await savePgSession(session);
       console.log(`Sesión guardada para atleta ${athlete.id}`);
     } catch (dbError) {
       console.error('Error guardando sesión en base de datos:', dbError);

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 
-export default function TrainingMetricsPage() {
+// Componente interno que usa useSearchParams
+function TrainingMetricsContent() {
   const [metrics, setMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -171,5 +172,18 @@ export default function TrainingMetricsPage() {
         </a>
       </div>
     </div>
+  );
+}
+
+// Componente principal que envuelve todo en Suspense
+export default function TrainingMetricsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-neutral-900">
+        <div className="text-xl text-white font-medium">Cargando métricas...</div>
+      </div>
+    }>
+      <TrainingMetricsContent />
+    </Suspense>
   );
 } 

@@ -8,8 +8,6 @@ export const dynamic = 'force-dynamic';
 // Constantes
 const METERS_TO_KM = 0.001;
 const MIN_RATIO_FOR_COMMENT = 10; // Umbral mínimo para comentar
-const MIN_VAM_FOR_COMMENT = 250; // Umbral mínimo para comentar VAM (metros/hora)
-const SECONDS_TO_HOURS = 1 / 3600; // Conversión de segundos a horas
 const MIN_ELEVATION_GAIN_FOR_SEGMENT = 10; // Mínimo desnivel para considerar un segmento de subida (en metros)
 const MIN_GRADIENT_FOR_CLIMB = 2; // Pendiente mínima en % para considerar una subida
 
@@ -67,26 +65,18 @@ export async function POST(request) {
       if ((activityDetails.sport_type === 'TrailRun' || activityDetails.sport_type === 'Run') && 
           activityDetails.total_elevation_gain > 0) {
         
-        // Calcular métricas para verificar umbrales
+        // Calcular ratio para verificar umbral
         const elevationGain = activityDetails.total_elevation_gain;
         const distanceKm = activityDetails.distance * METERS_TO_KM;
         const ratio = distanceKm > 0 ? elevationGain / distanceKm : 0;
         
-        // Calcular VAM estándar (se usará como respaldo si no hay VAM preciso)
-        const standardVam = activityDetails.moving_time > 0 ? 
-          elevationGain / (activityDetails.moving_time / 3600) : 0;
-        
-        // Verificar si la actividad cumple los requisitos mínimos
-        const meetsRatioThreshold = ratio >= MIN_RATIO_FOR_COMMENT;
-        const meetsVamThreshold = standardVam >= MIN_VAM_FOR_COMMENT;
-        
-        if (!meetsRatioThreshold && !meetsVamThreshold) {
-          console.log(`Actividad ${activityId} no cumple los umbrales mínimos. Ratio: ${ratio.toFixed(1)}, VAM: ${Math.round(standardVam)}`);
+        // Verificar si la actividad cumple el umbral mínimo de ratio
+        if (ratio < MIN_RATIO_FOR_COMMENT) {
+          console.log(`Actividad ${activityId} no cumple el umbral mínimo de ratio: ${ratio.toFixed(1)}`);
           return NextResponse.json({ 
             success: true, 
-            message: 'Actividad no alcanza umbrales mínimos para comentar',
-            ratio: ratio.toFixed(1),
-            vam: Math.round(standardVam)
+            message: 'Actividad no alcanza el umbral de ratio para comentar',
+            ratio: ratio.toFixed(1)
           });
         }
         

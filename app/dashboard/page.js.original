@@ -1,0 +1,390 @@
+'use client';
+
+import { useEffect, useState, Suspense, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import html2canvas from 'html2canvas';
+import dynamic from 'next/dynamic';
+
+// Importar Chart.js para los gráficos
+import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend } from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Registrar componentes de Chart.js
+ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
+
+// Cargar el componente del mapa dinámicamente (sin SSR)
+const MapComponent = dynamic(() => import('../components/MapComponent'), { 
+  ssr: false,
+  loading: () => <div className="h-[400px] bg-neutral-800 flex items-center justify-center">Cargando mapa...</div>
+});
+
+// Componente de gráfico de altimetría
+const AltimetryChart = ({ activityStreamDistance, activityStreamAltitude, activityStreamHeartRate }) => {
+  if (!activityStreamDistance?.length || !activityStreamAltitude?.length) {
+    return <div className="h-full w-full bg-neutral-800 flex items-center justify-center">No hay datos de altimetría disponibles</div>;
+  }
+
+  const data = {
+    labels: activityStreamDistance.map(distance => (distance / 1000).toFixed(1)), // Convertir distancia a kilómetros
+    datasets: [
+      {
+        label: 'Altitud (m)',
+        data: activityStreamAltitude,
+        borderColor: 'rgba(75,192,192,1)', // Color azul para altimetría
+        fill: false,
+        tension: 0,
+        borderWidth: 1,
+        pointRadius: 0,
+        yAxisID: 'y1', // Asociar con el primer eje Y (altitud)
+      },
+      {
+        label: 'Frecuencia cardíaca (ppm)',
+        data: activityStreamHeartRate,
+        borderColor: 'rgba(255,99,132,1)', // Color rojo para frecuencia cardíaca
+        fill: false,
+        tension: 0,
+        borderWidth: 1,
+        pointRadius: 0,
+        yAxisID: 'y2', // Asociar con el segundo eje Y (FC)
+      },
+    ],
+  };
+
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          color: '#fff'
+        }
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: 'Distancia (km)',
+          color: '#fff'
+        },
+        ticks: {
+          color: '#ccc'
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        }
+      },
+      y1: {
+        type: 'linear',
+        position: 'left',
+        title: {
+          display: true,
+          text: 'Altitud (m)',
+          color: '#fff'
+        },
+        beginAtZero: false,
+        ticks: {
+          color: '#ccc'
+        },
+        grid: {
+          color: 'rgba(255, 255, 255, 0.1)'
+        }
+      },
+      y2: {
+        type: 'linear',
+        position: 'right',
+        title: {
+          display: true,
+          text: 'Frecuencia Cardíaca (ppm)',
+          color: '#fff'
+        },
+        beginAtZero: false,
+        ticks: {
+          color: '#ccc'
+        },
+        grid: {
+          drawOnChartArea: false,
+          color: 'rgba(255, 255, 255, 0.1)'
+        },
+      },
+    },
+  };
+
+  return (
+    <div className="bg-neutral-800 p-4 rounded-lg">
+      <Line data={data} options={options} />
+    </div>
+  );
+};
+
+function DashboardContent() {
+  const searchParams = useSearchParams();
+  const [activities, setActivities] = useState([]);
+  const [athleteName, setAthleteName] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [selectedActivity, setSelectedActivity] = useState(null);
+  const [showSummary, setShowSummary] = useState(false);
+  const [summaryTab, setSummaryTab] = useState('week');
+  const [urlToken, setUrlToken] = useState(searchParams.get('token'));
+  const [apiToken, setApiToken] = useState(null);
+
+  // Antes de la parte del botón de comentario
+  const [userId, setUserId] = useState(null);
+
+  // Obtener token de la API si no existe en URL
+  useEffect(() => {
+    async function getTokenFromApi() {
+      if (!urlToken) {
+        try {
+          const response = await fetch('/api/auth/me');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.token) {
+              setApiToken(data.token);
+            } else {
+              // Si no hay token en la API, redirigir a inicio
+              window.location.href = '/';
+            }
+          } else {
+            // Si hay error en la API, redirigir a inicio
+            window.location.href = '/';
+          }
+        } catch (error) {
+          console.error('Error obteniendo token de API:', error);
+          window.location.href = '/';
+        }
+      }
+    }
+    
+    getTokenFromApi();
+  }, [urlToken]);
+
+  // Token efectivo (de URL o API)
+  const token = urlToken || apiToken;
+
+  // En useEffect, obtener el ID de usuario al cargar
+  useEffect(() => {
+    // Intentar obtener el ID de usuario de la sesión o de las cookies
+    async function getUserId() {
+      try {
+        const response = await fetch('/api/auth/me');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.id) {
+            setUserId(data.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error obteniendo ID de usuario:', error);
+      }
+    }
+    
+    getUserId();
+  }, []);
+
+  useEffect(() => {
+    if (!token) {
+      window.location.href = '/';
+      return;
+    }
+
+    const fetchData = async () => {
+      try {
+        // Fetch athlete profile
+        const athleteRes = await fetch('https://www.strava.com/api/v3/athlete', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (athleteRes.ok) {
+          const athlete = await athleteRes.json();
+          setAthleteName(`${athlete.firstname} ${athlete.lastname}`);
+          
+          // Guardar ID de atleta para métricas
+          if (athlete && athlete.id) {
+            localStorage.setItem('athleteId', athlete.id.toString());
+          }
+        }
+        
+        // Fetch activities
+        const response = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=20', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+          throw new Error('Failed to fetch activities');
+        }
+        const data = await response.json();
+        setActivities(data);
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [token]);
+
+  // Funciones de utilidad para formatear datos
+  const formatDistance = (meters) => {
+    return (meters / 1000).toFixed(2) + ' km';
+  };
+
+  const formatElevation = (meters) => {
+    return Math.round(meters) + ' m';
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('es-ES', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    });
+  };
+
+  const formatTime = (seconds) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}h ${minutes.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`;
+    }
+    return `${minutes}m ${secs.toString().padStart(2, '0')}s`;
+  };
+
+  // Calcular TheRatio (desnivel/distancia)
+  const calculateRatio = (elevationGain, distanceMeters) => {
+    if (!elevationGain || !distanceMeters || distanceMeters === 0) return 0;
+    const distanceKm = distanceMeters / 1000;
+    return (elevationGain / distanceKm).toFixed(1);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-900">
+        <div className="text-xl text-white font-medium">Cargando tus actividades...</div>
+      </div>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-neutral-900">
+      <div className="max-w-6xl mx-auto px-2 sm:px-6 lg:px-8 py-10">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white">TheRatio</h1>
+            <p className="text-neutral-300 mt-1">Resumen de entrenos</p>
+            {athleteName && (
+              <p className="text-neutral-400 text-sm">de {athleteName}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-2 sm:gap-4">
+            <a 
+              href="/metrics" 
+              className="bg-orange-500/80 text-white px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-medium hover:bg-orange-600 transition-colors"
+              title="Ver métricas de entrenamiento"
+            >
+              Métricas
+            </a>
+            <button 
+              className="bg-white/10 text-white px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-medium hover:bg-white/20 transition-colors"
+              onClick={async () => {
+                try {
+                  await fetch('/api/auth/logout');
+                  window.location.href = '/';
+                } catch (error) {
+                  console.error('Error al cerrar sesión:', error);
+                  window.location.href = '/';
+                }
+              }}
+            >
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+        
+        <div className="space-y-4">
+          <h2 className="text-xl font-semibold text-white mb-4">Tus últimas actividades ({activities.length})</h2>
+          
+          {activities.length === 0 ? (
+            <div className="bg-neutral-800 p-6 rounded-lg text-white text-center">
+              No se encontraron actividades recientes.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4">
+              {activities.map(activity => (
+                <div 
+                  key={activity.id} 
+                  className="bg-neutral-800 p-4 rounded-lg shadow hover:bg-neutral-700 transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="font-medium text-white text-lg">{activity.name}</h3>
+                      <p className="text-neutral-400 text-sm">{formatDate(activity.start_date)} - {activity.type}</p>
+                    </div>
+                    <a 
+                      href={`https://www.strava.com/activities/${activity.id}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-orange-400 hover:text-orange-300 text-sm"
+                    >
+                      Ver en Strava
+                    </a>
+                  </div>
+                  
+                  <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-neutral-500 text-xs">Distancia</p>
+                      <p className="text-white">{formatDistance(activity.distance)}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-neutral-500 text-xs">Desnivel</p>
+                      <p className="text-white">{formatElevation(activity.total_elevation_gain)}</p>
+                    </div>
+                    
+                    <div>
+                      <p className="text-neutral-500 text-xs">Tiempo</p>
+                      <p className="text-white">{formatTime(activity.moving_time)}</p>
+                    </div>
+                    
+                    {(activity.type === 'Run' || activity.type === 'TrailRun') && (
+                      <div>
+                        <p className="text-neutral-500 text-xs">TheRatio</p>
+                        <p className="text-orange-400 font-medium">
+                          {calculateRatio(activity.total_elevation_gain, activity.distance)} m/km
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          
+          <div className="mt-6 text-center">
+            <a 
+              href="/metrics" 
+              className="text-orange-400 hover:text-orange-300 underline"
+            >
+              Ver métricas de entrenamiento
+            </a>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+export default function Dashboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-neutral-900">
+        <div className="text-xl text-white font-medium">Cargando...</div>
+      </div>
+    }>
+      <DashboardContent />
+    </Suspense>
+  );
+} 

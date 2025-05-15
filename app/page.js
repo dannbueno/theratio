@@ -49,17 +49,38 @@ function HomeContent() {
           
           const data = await response.json();
           console.log('Respuesta del token (status):', response.status);
+          console.log('Datos recibidos:', data);
           
           if (!response.ok) {
             const errorDetail = JSON.stringify(data);
             console.error('Error obteniendo token:', errorDetail);
-            setErrorMessage(`Error al procesar la autorización: ${errorDetail}`);
+            
+            // Proporcionar un mensaje de error más específico
+            let errorMessage = 'Error al procesar la autorización';
+            
+            if (data.error) {
+              errorMessage += `: ${data.error}`;
+              
+              if (data.details && data.details.message) {
+                errorMessage += ` - ${data.details.message}`;
+              } else if (data.details) {
+                errorMessage += ` - ${JSON.stringify(data.details)}`;
+              }
+            }
+            
+            setErrorMessage(errorMessage);
             setLoading(false);
             return;
           }
           
+          // Guardar ID de atleta para uso en métricas
+          if (data.id) {
+            localStorage.setItem('athleteId', data.id.toString());
+          }
+          
           // Redirigir al dashboard con el token
-          router.push(`/dashboard?token=${data.access_token}`);
+          // Usar data.token en lugar de data.access_token
+          router.push(`/dashboard?token=${data.token}`);
         } catch (err) {
           console.error('Error procesando código:', err);
           setErrorMessage('Error al procesar el código de autorización: ' + err.message);

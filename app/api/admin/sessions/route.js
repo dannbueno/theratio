@@ -25,32 +25,29 @@ export async function PUT(request) {
   }
 }
 
-// Para obtener todas las sesiones de un atleta
-export async function GET(request) {
-  const { searchParams } = new URL(request.url);
-  const athleteId = searchParams.get('athleteId');
-
-  if (!athleteId) {
-    return NextResponse.json({ error: 'Falta el ID del atleta' }, { status: 400 });
-  }
-
-  try {
-    const sessions = await getSessionsByAthlete(athleteId);
-    return NextResponse.json(sessions);
-  } catch (error) {
-    console.error('Error al obtener sesiones:', error);
-    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
-  }
-}
-
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+// Para obtener sesiones - maneja ambos casos
+export async function GET(request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const athleteId = searchParams.get('athleteId');
+
+    // Si se proporciona athleteId, devolver sesiones de ese atleta
+    if (athleteId) {
+      try {
+        const sessions = await getSessionsByAthlete(athleteId);
+        return NextResponse.json(sessions);
+      } catch (error) {
+        console.error('Error al obtener sesiones:', error);
+        return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
+      }
+    }
+    
+    // Si no hay athleteId, devolver todas las sesiones
     console.log('Obteniendo sesiones desde PostgreSQL...');
     
-    // Intentar obtener las sesiones desde PostgreSQL
     try {
       const sessions = await getPgSessions();
       
@@ -70,37 +67,37 @@ export async function GET() {
       });
     } catch (dbError) {
       console.error('Error al obtener datos de PostgreSQL:', dbError);
-      throw new Error(`Error de base de datos: ${dbError.message}`);
+      
+      // Devolver datos estáticos en caso de error
+      const staticSessions = [
+        {
+          id: 12345678,
+          name: "Daniel Bueno (Fallback)",
+          profile: "https://example.com/profile.jpg",
+          timestamp: new Date().toISOString()
+        },
+        {
+          id: 87654321,
+          name: "Ana García (Fallback)",
+          profile: "https://example.com/profile2.jpg",
+          timestamp: new Date(Date.now() - 86400000).toISOString()
+        }
+      ];
+      
+      const stats = {
+        totalUsers: staticSessions.length,
+        lastLogin: staticSessions[0]
+      };
+      
+      return NextResponse.json({
+        sessions: staticSessions,
+        stats,
+        source: 'error-fallback',
+        error: dbError.message
+      });
     }
   } catch (error) {
     console.error('Error completo al leer las sesiones:', error);
-    
-    // Devolver datos estáticos en caso de error
-    const staticSessions = [
-      {
-        id: 12345678,
-        name: "Daniel Bueno (Fallback)",
-        profile: "https://example.com/profile.jpg",
-        timestamp: new Date().toISOString()
-      },
-      {
-        id: 87654321,
-        name: "Ana García (Fallback)",
-        profile: "https://example.com/profile2.jpg",
-        timestamp: new Date(Date.now() - 86400000).toISOString()
-      }
-    ];
-    
-    const stats = {
-      totalUsers: staticSessions.length,
-      lastLogin: staticSessions[0]
-    };
-    
-    return NextResponse.json({
-      sessions: staticSessions,
-      stats,
-      source: 'error-fallback',
-      error: error.message
-    });
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 });
   }
 } 

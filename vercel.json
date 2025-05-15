@@ -1,6 +1,9 @@
 {
   "env": {
-    "NEXT_PUBLIC_BASE_URL": "https://theratio.vercel.app",
+    "NEXT_PUBLIC_BASE_URL": "https://theratio-dannbueno-dan-buenos-projects.vercel.app",
     "NEXT_PUBLIC_STRAVA_CLIENT_ID": "129187"
-  }
+  },
+  "buildCommand": "next build",
+  "installCommand": "npm install",
+  "framework": "nextjs"
 } 

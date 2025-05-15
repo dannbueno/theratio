@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { savePgSession } from '../../../../../lib/postgres';
+import { cookies } from 'next/headers';
 
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
@@ -54,6 +55,7 @@ export async function POST(request) {
     params.append('code', code);
     params.append('grant_type', 'authorization_code');
 
+    console.log('Realizando intercambio de código por token...');
     // Realizar intercambio de código por token
     const response = await fetch(tokenUrl, {
       method: 'POST',
@@ -73,6 +75,7 @@ export async function POST(request) {
     }
 
     const tokenData = await response.json();
+    console.log('Token obtenido correctamente');
     
     // Extraer información del atleta
     const { athlete, access_token, refresh_token, expires_at } = tokenData;
@@ -82,6 +85,27 @@ export async function POST(request) {
         error: 'No se pudo obtener la información del atleta',
       }, { status: 500 });
     }
+    
+    // Configurar cookies para almacenar la sesión
+    const cookieStore = cookies();
+    
+    // Establecer todas las cookies necesarias para la autenticación
+    // Tiempo de expiración: 6 horas
+    const sixHoursInSeconds = 6 * 60 * 60;
+    const options = {
+      maxAge: sixHoursInSeconds,
+      path: '/',
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true
+    };
+    
+    // Guardar datos del atleta y tokens en cookies
+    cookieStore.set('strava_athlete_id', athlete.id.toString(), options);
+    cookieStore.set('strava_access_token', access_token, options);
+    cookieStore.set('strava_refresh_token', refresh_token, options);
+    cookieStore.set('strava_expires_at', expires_at.toString(), options);
+    
+    console.log('Cookies de autenticación establecidas');
     
     // Guardar sesión en base de datos
     try {

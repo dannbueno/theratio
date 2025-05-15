@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { savePgSession } from '@/lib/postgres';
+import { saveAthleteSession } from '../../../../../lib/postgres';
 
 // Asegurar que se ejecuta dinámicamente para cada solicitud
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ async function saveSession(userData) {
     console.log('Intentando guardar sesión para:', userData.athlete.id);
     
     // Guardar sesión en PostgreSQL
-    const result = await savePgSession(userData);
+    const result = await saveAthleteSession(userData);
     
     if (result) {
       console.log(`Sesión guardada para ${userData.athlete.firstname} ${userData.athlete.lastname}`);
@@ -27,59 +27,101 @@ async function saveSession(userData) {
 
 export async function POST(request) {
   try {
-    // Obtener el código de la solicitud
-    const { code } = await request.json();
-    
-    if (!code) {
-      return NextResponse.json({ error: 'Se requiere un código de autorización' }, { status: 400 });
-    }
-    
-    // Variables para la solicitud a Strava
-    const clientId = process.env.STRAVA_CLIENT_ID;
-    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
-    
-    console.log('Intercambiando código por token');
-    console.log('Client ID:', clientId);
-    console.log('Secret disponible:', !!clientSecret);
-    
-    if (!clientId || !clientSecret) {
-      console.error('Faltan credenciales de Strava');
-      return NextResponse.json({ error: 'Faltan credenciales de Strava' }, { status: 500 });
+    const requestData = await request.json();
+    const { code, error } = requestData;
+
+    if (error || !code) {
+      return NextResponse.json({
+        error: error || 'No se recibió el código de autorización',
+      }, { status: 400 });
     }
 
-    // Intercambiar el código por un token
-    const tokenResponse = await fetch('https://www.strava.com/oauth/token', {
+    // Configuración para hacer la solicitud a Strava
+    const tokenUrl = 'https://www.strava.com/api/v3/oauth/token';
+    const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      console.error('Faltan credenciales de Strava en las variables de entorno');
+      return NextResponse.json({
+        error: 'Configuración de la aplicación incompleta',
+      }, { status: 500 });
+    }
+
+    const params = new URLSearchParams();
+    params.append('client_id', clientId);
+    params.append('client_secret', clientSecret);
+    params.append('code', code);
+    params.append('grant_type', 'authorization_code');
+
+    // Realizar intercambio de código por token
+    const response = await fetch(tokenUrl, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: JSON.stringify({
-        client_id: clientId,
-        client_secret: clientSecret,
-        code,
-        grant_type: 'authorization_code',
-      }),
+      body: params.toString(),
     });
 
-    const tokenData = await tokenResponse.json();
-    
-    // Registrar la respuesta para depuración
-    console.log('Respuesta de token (status):', tokenResponse.status);
-    
-    if (!tokenResponse.ok) {
-      console.error('Error intercambiando código por token:', tokenData);
-      return NextResponse.json(tokenData, { status: tokenResponse.status });
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Error respuesta Strava:', errorData);
+      return NextResponse.json({
+        error: 'Error intercambiando el código por token',
+        details: errorData,
+      }, { status: response.status });
     }
 
-    // Guardar la sesión del usuario si la autenticación es exitosa
-    if (tokenData.athlete) {
-      await saveSession(tokenData);
+    const tokenData = await response.json();
+    
+    // Extraer información del atleta
+    const { athlete, access_token, refresh_token, expires_at } = tokenData;
+    
+    if (!athlete || !athlete.id) {
+      return NextResponse.json({
+        error: 'No se pudo obtener la información del atleta',
+      }, { status: 500 });
+    }
+    
+    // Guardar sesión en base de datos
+    try {
+      const session = {
+        id: athlete.id,
+        firstname: athlete.firstname,
+        lastname: athlete.lastname,
+        profile: athlete.profile,
+        access_token,
+        refresh_token,
+        expires_at,
+        username: athlete.username || null,
+        city: athlete.city || null,
+        state: athlete.state || null,
+        country: athlete.country || null,
+        sex: athlete.sex || null,
+        athlete_type: athlete.athlete_type || null
+      };
+      
+      await saveAthleteSession(session);
+      console.log(`Sesión guardada para atleta ${athlete.id}`);
+    } catch (dbError) {
+      console.error('Error guardando sesión en base de datos:', dbError);
+      // Continuar incluso si hay error en BD
     }
 
-    // Devolver el token y otros datos al cliente
-    return NextResponse.json(tokenData);
+    // Devolver los datos relevantes (no incluimos refresh_token por seguridad)
+    return NextResponse.json({
+      id: athlete.id,
+      firstname: athlete.firstname,
+      lastname: athlete.lastname,
+      profile: athlete.profile,
+      token: access_token,
+      expires_at,
+    });
   } catch (error) {
-    console.error('Error en el intercambio de token:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Error en el intercambio de código:', error);
+    return NextResponse.json({
+      error: 'Error interno del servidor',
+      details: error.message,
+    }, { status: 500 });
   }
 } 

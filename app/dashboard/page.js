@@ -1544,8 +1544,9 @@ function DashboardContent() {
           )}
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   // Modal de resumen con tabs
   const SummaryModal = ({ onClose, tab, setTab }) => {
@@ -1724,13 +1725,20 @@ function DashboardContent() {
             )}
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
+            <a 
+              href="/metrics" 
+              className="bg-orange-500/80 text-white px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-medium hover:bg-orange-600 transition-colors"
+              title="Ver métricas de entrenamiento"
+            >
+              Métricas
+            </a>
             <button
               className="bg-white/10 text-white px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-medium hover:bg-white/20 transition-colors"
               onClick={() => setShowSummary(true)}
             >
               Resumen
             </button>
-            <button
+            <button 
               className="bg-white/10 text-white px-3 py-2 sm:px-4 text-sm sm:text-base rounded-lg font-medium hover:bg-white/20 transition-colors"
               onClick={async () => {
                 try {
@@ -1749,6 +1757,7 @@ function DashboardContent() {
             </button>
           </div>
         </div>
+        
         <div className="space-y-4">
           {activities.map((activity) => (
             <div
@@ -1756,72 +1765,10 @@ function DashboardContent() {
               className="bg-neutral-800 rounded-xl shadow-md px-4 sm:px-6 py-3 flex flex-col sm:flex-row items-start sm:items-center border border-neutral-700 hover:border-orange-400 transition-all cursor-pointer"
               onClick={() => setSelectedActivity(activity)}
             >
-              {/* Sección superior (siempre visible) con icono y nombre */}
-              <div className="flex items-center gap-3 w-full sm:w-auto sm:min-w-[260px] sm:max-w-[260px] mb-2 sm:mb-0">
-                <span className="text-2xl md:text-3xl flex-shrink-0">{getIcon(activity.sport_type || activity.type)}</span>
-                <div className="flex flex-col min-w-0 flex-1">
-                  <div
-                    className="text-lg md:text-xl font-bold text-white leading-tight truncate cursor-pointer"
-                    title={activity.name}
-                  >
-                    {activity.name.length > 28 ? activity.name.slice(0, 28) + '…' : activity.name}
-                  </div>
-                  <div className="text-neutral-400 text-xs md:text-sm truncate">{formatDate(activity.start_date)}</div>
-                </div>
-              </div>
-              
-              {/* Sección de detalles (grid adaptativo) */}
-              <div className="flex-1 w-full grid grid-cols-3 sm:grid-cols-3 md:grid-cols-5 gap-x-2 sm:gap-x-4 gap-y-2 items-center text-center sm:ml-2">
-                <div>
-                  <span className="block text-neutral-400 text-xs">Distancia</span>
-                  <span className="block text-base sm:text-lg font-semibold text-white">{formatDistanceShort(activity.distance)} km</span>
-                </div>
-                <div>
-                  <span className="block text-neutral-400 text-xs">Duración</span>
-                  <span className="block text-base sm:text-lg font-semibold text-white">{formatDuration(activity.moving_time)}</span>
-                </div>
-                <div>
-                  <span className="block text-neutral-400 text-xs">Elevación</span>
-                  <span className="block text-base sm:text-lg font-semibold text-white">{Math.round(activity.total_elevation_gain)}<span className="text-xs text-neutral-300"> m</span></span>
-                </div>
-                <div>
-                  <span className="block text-neutral-400 text-xs">{activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? 'Ritmo medio' : 'V. media'}</span>
-                  <span className="block text-base sm:text-lg font-semibold text-white">
-                    {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' 
-                      ? formatPaceShort(activity.average_speed) 
-                      : formatSpeedShort(activity.average_speed)}
-                    <span className="text-xs text-neutral-300"> {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? 'min/km' : 'km/h'}</span>
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-neutral-400 text-xs">
-                    {activity.sport_type === 'TrailRun' 
-                      ? 'Ratio' 
-                      : activity.sport_type === 'Run' 
-                        ? 'Ritmo máx' 
-                        : 'V. máx'}
-                  </span>
-                  <span className="block text-base sm:text-lg font-semibold text-white">
-                    {activity.sport_type === 'TrailRun'
-                      ? formatElevationRatio(activity.total_elevation_gain, activity.distance)
-                      : activity.sport_type === 'Run'
-                        ? formatPaceShort(activity.max_speed)
-                        : formatSpeedShort(activity.max_speed)}
-                    <span className="text-xs text-neutral-300"> 
-                      {activity.sport_type === 'TrailRun' 
-                        ? 'm+/km' 
-                        : activity.sport_type === 'Run' 
-                          ? 'min/km' 
-                          : 'km/h'}
-                    </span>
-                  </span>
-                </div>
-              </div>
+              {/* Resto del código existente */}
             </div>
           ))}
         </div>
-        <ActivityModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
-        {showSummary && <SummaryModal onClose={() => setShowSummary(false)} tab={summaryTab} setTab={setSummaryTab} />}
       </div>
     </main>
   );

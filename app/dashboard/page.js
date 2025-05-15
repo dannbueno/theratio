@@ -679,6 +679,169 @@ function DashboardContent() {
       }
     }, [activeTab, activityStreams.polyline.length, loading, activity, modalToken]);
     
+    // Lista de claves a ocultar
+    const hiddenFields = [
+      'id', 'start_date_local', 'timezone', 'utc_offset', 'location_city', 'location_state', 'location_country',
+      'achievement_count', 'trainer', 'commute', 'manual', 'private', 'visibility', 'flagged', 'gear_id',
+      'start_latlng', 'end_latlng', 'device_watts', 'heartrate_opt_out', 'display_hide_heartrate_option',
+      'upload_id', 'upload_id_str', 'external_id', 'from_accepted_tag', 'pr_count', 'has_kudoed',
+      'resource_state', 'athlete',
+      'workout_type', 'kudos_count', 'comment_count', 'athlete_count', 'map',
+      // Ocultar campos redundantes que ya se muestran en la cabecera
+      'name', 'start_date', 'type',
+      // Ocultar sport_type ya que lo mostraremos en la cabecera
+      'sport_type',
+      // Ocultar VAM, Tiempo en ascenso y Metros subidos (ya mostrados en la sección superior)
+      'vam', 'climbTime', 'climbMeters'
+    ];
+    
+    // Orden preferido de los campos
+    const fieldOrder = [
+      'distance', 'moving_time', 'elapsed_time', 'total_elevation_gain',
+      'average_speed', 'max_speed', 'average_heartrate', 'max_heartrate', 'average_cadence',
+      'average_watts', 'weighted_average_watts', 'max_watts',
+      'elev_high', 'elev_low', 'suffer_score', 'average_temp', 'calories',
+      'start_latitude', 'start_longitude', 'end_latitude', 'end_longitude'
+    ];
+
+    // Grupos de campos para organizar la visualización
+    const fieldGroups = {
+      primary: ['distance', 'moving_time', 'elapsed_time', 'total_elevation_gain'],
+      performance: ['average_speed', 'max_speed', 'average_heartrate', 'max_heartrate', 'average_cadence'],
+      secondary: ['average_watts', 'weighted_average_watts', 'max_watts'],
+      elevation: ['elev_high', 'elev_low', 'suffer_score', 'average_temp', 'calories'],
+      coordinates: ['start_latitude', 'start_longitude', 'end_latitude', 'end_longitude']
+    };
+    
+    // Diccionario de unidades por campo
+    const fieldUnits = {
+      total_elevation_gain: 'm',
+      average_watts: 'W',
+      weighted_average_watts: 'W',
+      max_watts: 'W',
+      calories: 'kcal',
+      average_heartrate: 'ppm',
+      max_heartrate: 'ppm',
+      average_cadence: 'rpm',
+      average_temp: '°C',
+      elev_high: 'm',
+      elev_low: 'm',
+      suffer_score: 'pts',
+      start_latitude: '°',
+      start_longitude: '°',
+      end_latitude: '°',
+      end_longitude: '°'
+    };
+    
+    // Helper para detectar y formatear fechas ISO
+    const isIsoDate = (val) => typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val);
+    const formatDateField = (val) => {
+      const d = new Date(val);
+      const pad = (n) => n.toString().padStart(2, '0');
+      return `${pad(d.getHours())}:${pad(d.getMinutes())} ${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+    };
+    
+    // Función para formatear valor con unidades
+    const formatValueWithUnit = (key, value) => {
+      if (value === null || value === undefined) return '—';
+      
+      if (key === 'sport_type') return sportTypeLabels[value] || value;
+      if (key === 'distance') return formatDistance(value);
+      if (key === 'moving_time' || key === 'elapsed_time') return formatHMS(value);
+      
+      if (key === 'average_speed' && (activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
+        return formatPace(value);
+      }
+      if (key === 'max_speed' && (activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
+        return formatPace(value);
+      }
+      if (key === 'average_speed' && !(activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
+        return `${formatSpeedShort(value)} km/h`;
+      }
+      if (key === 'max_speed' && !(activity.sport_type === 'Run' || activity.sport_type === 'TrailRun')) {
+        return `${formatSpeedShort(value)} km/h`;
+      }
+      
+      // Formatear VAM con unidades y datos de subida
+      if (key === 'vam') {
+        return formatVAM(value, activity.climbTime, activity.climbMeters);
+      }
+      
+      // Formatear tiempo de ascenso
+      if (key === 'climbTime') {
+        return formatClimbTime(value);
+      }
+      
+      // Formatear metros de subida (sin decimales)
+      if (key === 'climbMeters') {
+        return `${Math.round(value)} m`;
+      }
+      
+      if (isIsoDate(value)) return formatDateField(value);
+      
+      // Añadir unidades para valores numéricos
+      if (typeof value === 'number' && fieldUnits[key]) {
+        // Valores que se muestran sin decimales (números enteros)
+        if ([
+          'average_heartrate', 
+          'max_heartrate', 
+          'suffer_score', 
+          'calories',
+          'average_cadence',
+          'total_elevation_gain',
+          'average_watts',
+          'weighted_average_watts',
+          'max_watts',
+          'elev_high',
+          'elev_low',
+          'average_temp'
+        ].includes(key)) {
+          return `${Math.round(value)} ${fieldUnits[key]}`;
+        }
+        
+        // Por defecto, mostrar con 1 decimal para otros valores numéricos
+        return `${value.toFixed(1)} ${fieldUnits[key]}`;
+      }
+      
+      // Para otros valores
+      if (typeof value === 'object' && value !== null) {
+        return Array.isArray(value) 
+          ? `Array (${value.length})`
+          : value.id 
+            ? `ID: ${value.id}` 
+            : 'Ver detalles';
+      }
+      
+      return value.toString();
+    };
+    
+    // Renderizar un campo individual
+    const renderField = (key) => {
+      if (!activity[key] && activity[key] !== 0) return null;
+      return (
+        <div key={key} className="border border-neutral-800 rounded-lg py-1.5 px-2 sm:px-3 inline-flex flex-col">
+          <span className="text-neutral-400 text-xs">{getFieldLabel(key, activity.sport_type)}</span>
+          <span className="text-white font-semibold mt-0.5 text-sm sm:text-base">
+            {formatValueWithUnit(key, activity[key])}
+          </span>
+        </div>
+      );
+    };
+    
+    // Organizar campos en las secciones disponibles
+    const availableFields = fieldOrder.filter(key => 
+      activity[key] !== undefined && 
+      !hiddenFields.includes(key)
+    );
+    
+    // Campos adicionales que no están en el orden predefinido
+    const extraFields = Object.keys(activity)
+      .filter(key => 
+        !hiddenFields.includes(key) && 
+        !fieldOrder.includes(key) && 
+        activity[key] !== undefined
+      );
+    
     if (!activity) return null;
     
     return (
@@ -757,48 +920,62 @@ function DashboardContent() {
           <div className="h-[300px] sm:h-[360px] w-full overflow-y-auto">
             {/* Pestaña de Datos */}
             {activeTab === 'datos' && (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-                <div className="bg-neutral-800 p-3 rounded-lg">
-                  <div className="text-neutral-400 text-xs">Distancia</div>
-                  <div className="text-white font-semibold">{formatDistance(activity.distance)}</div>
-                </div>
-                <div className="bg-neutral-800 p-3 rounded-lg">
-                  <div className="text-neutral-400 text-xs">Tiempo</div>
-                  <div className="text-white font-semibold">{formatDuration(activity.moving_time)}</div>
-                </div>
-                <div className="bg-neutral-800 p-3 rounded-lg">
-                  <div className="text-neutral-400 text-xs">Desnivel</div>
-                  <div className="text-white font-semibold">{formatElevation(activity.total_elevation_gain)}</div>
-                </div>
-                <div className="bg-neutral-800 p-3 rounded-lg">
-                  <div className="text-neutral-400 text-xs">
-                    {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? 'Ritmo' : 'Velocidad'}
-                  </div>
-                  <div className="text-white font-semibold">
-                    {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun'
-                      ? formatPace(activity.average_speed)
-                      : formatSpeed(activity.average_speed)}
+              <>
+                {/* Estadísticas principales */}
+                <div className="mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {fieldGroups.primary.map(key => renderField(key))}
                   </div>
                 </div>
-                {activity.average_heartrate && (
-                  <div className="bg-neutral-800 p-3 rounded-lg">
-                    <div className="text-neutral-400 text-xs">FC Media</div>
-                    <div className="text-white font-semibold">{Math.round(activity.average_heartrate)} ppm</div>
+                
+                {/* Estadísticas de rendimiento */}
+                <div className="mb-4">
+                  <h3 className="text-sm text-neutral-400 mb-1">Rendimiento</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {fieldGroups.performance.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                  </div>
+                </div>
+                
+                {/* Estadísticas secundarias */}
+                {fieldGroups.secondary.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Potencia</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.secondary.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
                   </div>
                 )}
-                {activity.max_heartrate && (
-                  <div className="bg-neutral-800 p-3 rounded-lg">
-                    <div className="text-neutral-400 text-xs">FC Máxima</div>
-                    <div className="text-white font-semibold">{Math.round(activity.max_heartrate)} ppm</div>
+                
+                {/* Altitud */}
+                {fieldGroups.elevation.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Otros</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.elevation.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
                   </div>
                 )}
-                {activity.calories && (
-                  <div className="bg-neutral-800 p-3 rounded-lg">
-                    <div className="text-neutral-400 text-xs">Calorías</div>
-                    <div className="text-white font-semibold">{Math.round(activity.calories)} kcal</div>
+                
+                {/* Coordenadas */}
+                {fieldGroups.coordinates.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Coordenadas</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.coordinates.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
                   </div>
                 )}
-              </div>
+                
+                {/* Campos adicionales que no están en ningún grupo */}
+                {extraFields.length > 0 && (
+                  <div>
+                    <h3 className="text-sm text-neutral-400 mb-1">Datos adicionales</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {extraFields.map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             
             {/* Pestaña de Mapa */}

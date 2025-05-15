@@ -692,7 +692,11 @@ function DashboardContent() {
       // Ocultar sport_type ya que lo mostraremos en la cabecera
       'sport_type',
       // Ocultar VAM, Tiempo en ascenso y Metros subidos (ya mostrados en la sección superior)
-      'vam', 'climbTime', 'climbMeters'
+      'vam', 'climbTime', 'climbMeters',
+      // Campos innecesarios adicionales
+      'photo_count', 'kilojoules', 'has_heartrate', 'total_photo_count',
+      // Campos de coordenadas
+      'start_latitude', 'start_longitude', 'end_latitude', 'end_longitude'
     ];
     
     // Orden preferido de los campos
@@ -706,11 +710,10 @@ function DashboardContent() {
 
     // Grupos de campos para organizar la visualización
     const fieldGroups = {
-      primary: ['distance', 'moving_time', 'elapsed_time', 'total_elevation_gain'],
-      performance: ['average_speed', 'max_speed', 'average_heartrate', 'max_heartrate', 'average_cadence'],
+      primary: ['distance', 'moving_time', 'total_elevation_gain', 'average_speed'],
+      cardio: ['average_heartrate', 'max_heartrate', 'average_cadence', 'calories'],
       secondary: ['average_watts', 'weighted_average_watts', 'max_watts'],
-      elevation: ['elev_high', 'elev_low', 'suffer_score', 'average_temp', 'calories'],
-      coordinates: ['start_latitude', 'start_longitude', 'end_latitude', 'end_longitude']
+      others: ['elapsed_time', 'elev_high', 'elev_low', 'suffer_score', 'average_temp', 'max_speed']
     };
     
     // Diccionario de unidades por campo
@@ -839,7 +842,11 @@ function DashboardContent() {
       .filter(key => 
         !hiddenFields.includes(key) && 
         !fieldOrder.includes(key) && 
-        activity[key] !== undefined
+        activity[key] !== undefined &&
+        activity[key] !== null &&
+        activity[key] !== '' &&
+        // Ignorar campos con valor 0 a menos que sean clave
+        (activity[key] !== 0 || key === 'distance' || key === 'moving_time' || key === 'elapsed_time')
       );
     
     if (!activity) return null;
@@ -890,6 +897,45 @@ function DashboardContent() {
                     </div>
                   </div>
                 )}
+                
+                {/* Botón para añadir comentario */}
+                <div className="ml-auto">
+                  <button
+                    className="px-3 py-1.5 rounded text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white transition-colors"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      
+                      try {
+                        // Llamar al endpoint para añadir comentario
+                        const response = await fetch('/api/strava/add-comment', {
+                          method: 'POST',
+                          headers: {
+                            'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                            activityId: activity.id,
+                            userId: userId || (activity.athlete?.id)
+                          }),
+                        });
+                        
+                        const result = await response.json();
+                        
+                        if (result.updated) {
+                          alert('Comentario añadido correctamente');
+                        } else {
+                          alert('Error al añadir comentario: ' + (result.reason || result.error || 'Error desconocido'));
+                        }
+                        
+                        console.log('Resultado de añadir comentario:', result);
+                      } catch (error) {
+                        console.error('Error al añadir comentario:', error);
+                        alert('Error al añadir comentario: ' + error.message);
+                      }
+                    }}
+                  >
+                    💬 Añadir comentario
+                  </button>
+                </div>
               </div>
             </div>
           )}
@@ -928,11 +974,11 @@ function DashboardContent() {
                   </div>
                 </div>
                 
-                {/* Estadísticas de rendimiento */}
+                {/* Estadísticas cardíacas */}
                 <div className="mb-4">
-                  <h3 className="text-sm text-neutral-400 mb-1">Rendimiento</h3>
+                  <h3 className="text-sm text-neutral-400 mb-1">Frecuencia Cardíaca</h3>
                   <div className="flex flex-wrap gap-2">
-                    {fieldGroups.performance.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    {fieldGroups.cardio.filter(key => availableFields.includes(key)).map(key => renderField(key))}
                   </div>
                 </div>
                 
@@ -946,22 +992,12 @@ function DashboardContent() {
                   </div>
                 )}
                 
-                {/* Altitud */}
-                {fieldGroups.elevation.some(key => availableFields.includes(key)) && (
+                {/* Otros datos */}
+                {fieldGroups.others.some(key => availableFields.includes(key)) && (
                   <div className="mb-4">
-                    <h3 className="text-sm text-neutral-400 mb-1">Otros</h3>
+                    <h3 className="text-sm text-neutral-400 mb-1">Datos adicionales</h3>
                     <div className="flex flex-wrap gap-2">
-                      {fieldGroups.elevation.filter(key => availableFields.includes(key)).map(key => renderField(key))}
-                    </div>
-                  </div>
-                )}
-                
-                {/* Coordenadas */}
-                {fieldGroups.coordinates.some(key => availableFields.includes(key)) && (
-                  <div className="mb-4">
-                    <h3 className="text-sm text-neutral-400 mb-1">Coordenadas</h3>
-                    <div className="flex flex-wrap gap-2">
-                      {fieldGroups.coordinates.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                      {fieldGroups.others.filter(key => availableFields.includes(key)).map(key => renderField(key))}
                     </div>
                   </div>
                 )}
@@ -969,7 +1005,7 @@ function DashboardContent() {
                 {/* Campos adicionales que no están en ningún grupo */}
                 {extraFields.length > 0 && (
                   <div>
-                    <h3 className="text-sm text-neutral-400 mb-1">Datos adicionales</h3>
+                    <h3 className="text-sm text-neutral-400 mb-1">Otros datos</h3>
                     <div className="flex flex-wrap gap-2">
                       {extraFields.map(key => renderField(key))}
                     </div>

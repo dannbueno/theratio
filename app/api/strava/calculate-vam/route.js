@@ -18,6 +18,21 @@ export async function POST(request) {
         error: 'activityId and userId are required' 
       }, { status: 400 });
     }
+    
+    // Validar que userId es un valor válido (no undefined, no null, no string vacío)
+    if (typeof userId !== 'number' && typeof userId !== 'string') {
+      console.log('Tipo de userId inválido:', typeof userId);
+      return NextResponse.json({ 
+        error: 'userId debe ser un número o string válido' 
+      }, { status: 400 });
+    }
+    
+    if (typeof userId === 'string' && userId.trim() === '') {
+      console.log('userId es una cadena vacía');
+      return NextResponse.json({ 
+        error: 'userId no puede ser una cadena vacía' 
+      }, { status: 400 });
+    }
 
     console.log(`Calculando VAM preciso para actividad ${activityId} del usuario ${userId}`);
 

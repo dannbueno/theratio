@@ -168,11 +168,17 @@ function DashboardContent() {
     async function getUserId() {
       try {
         const response = await fetch('/api/auth/me');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.id) {
-            setUserId(data.id);
-          }
+        if (!response.ok) {
+          console.error('Error en la respuesta al obtener ID de usuario:', response.status);
+          return;
+        }
+        
+        const data = await response.json();
+        if (data && data.id) {
+          console.log('ID de usuario obtenido correctamente:', data.id);
+          setUserId(data.id);
+        } else {
+          console.warn('No se encontró ID de usuario en la respuesta');
         }
       } catch (error) {
         console.error('Error obteniendo ID de usuario:', error);
@@ -393,14 +399,18 @@ function DashboardContent() {
     useEffect(() => {
       const fetchPreciseVAM = async () => {
         // Solo intentar calcular el VAM preciso si no existe ya y es una actividad elegible
+        // Verificar si tenemos algún identificador de usuario válido
+        const effectiveUserId = userId || (activity.athlete && activity.athlete.id);
+        
         if (
           !activity.vam && 
           (activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && 
           activity.total_elevation_gain > 0 &&
-          userId
+          effectiveUserId
         ) {
           setLoadingVam(true);
           try {
+            console.log('Calculando VAM preciso con ID:', effectiveUserId);
             const vamResponse = await fetch('/api/strava/calculate-vam', {
               method: 'POST',
               headers: {
@@ -408,7 +418,7 @@ function DashboardContent() {
               },
               body: JSON.stringify({
                 activityId: activity.id,
-                userId
+                userId: effectiveUserId
               }),
             });
             
@@ -430,9 +440,9 @@ function DashboardContent() {
     }, [activity, userId]);
     
     // Determinar qué VAM mostrar (del objeto actividad o del cálculo al vuelo)
-    const displayVam = activity.vam || (preciseVamData && preciseVamData.vam);
-    const displayClimbTime = activity.climbTime || (preciseVamData && preciseVamData.climbTime);
-    const displayClimbMeters = activity.climbMeters || (preciseVamData && preciseVamData.climbMeters);
+    const displayVam = activity.vam || (preciseVamData && preciseVamData.vam) || null;
+    const displayClimbTime = activity.climbTime || (preciseVamData && preciseVamData.climbTime) || null;
+    const displayClimbMeters = activity.climbMeters || (preciseVamData && preciseVamData.climbMeters) || null;
     
     // Cargar streams de datos cuando el usuario cambia a la pestaña de mapa o gráficos
     useEffect(() => {

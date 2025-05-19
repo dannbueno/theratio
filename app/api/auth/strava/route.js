@@ -8,8 +8,8 @@ export async function GET(request) {
   const clientId = process.env.STRAVA_CLIENT_ID;
   
   // Usar la URL base desde la variable de entorno para soportar desarrollo y producción
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
-  const redirectUri = encodeURIComponent(baseUrl);
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+  const redirectUri = encodeURIComponent(`${baseUrl}/api/auth/strava/exchange`);
   
   console.log("ID de cliente Strava:", clientId);
   console.log("URL de redirección utilizada:", redirectUri);

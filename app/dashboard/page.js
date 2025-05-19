@@ -389,6 +389,51 @@ function DashboardContent() {
       fetchPhotos();
     }, [activeTab, photos.length, loadingPhotos, activity, modalToken]);
     
+    // Cargar VAM preciso al abrir el modal si no está disponible
+    useEffect(() => {
+      const fetchPreciseVAM = async () => {
+        // Solo intentar calcular el VAM preciso si no existe ya y es una actividad elegible
+        if (
+          !activity.vam && 
+          (activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && 
+          activity.total_elevation_gain > 0 &&
+          userId
+        ) {
+          setLoadingVam(true);
+          try {
+            const vamResponse = await fetch('/api/strava/calculate-vam', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                activityId: activity.id,
+                userId
+              }),
+            });
+            
+            if (vamResponse.ok) {
+              const vamData = await vamResponse.json();
+              if (vamData && vamData.vam) {
+                setPreciseVamData(vamData);
+              }
+            }
+          } catch (error) {
+            console.error('Error obteniendo VAM preciso:', error);
+          } finally {
+            setLoadingVam(false);
+          }
+        }
+      };
+      
+      fetchPreciseVAM();
+    }, [activity, userId]);
+    
+    // Determinar qué VAM mostrar (del objeto actividad o del cálculo al vuelo)
+    const displayVam = activity.vam || (preciseVamData && preciseVamData.vam);
+    const displayClimbTime = activity.climbTime || (preciseVamData && preciseVamData.climbTime);
+    const displayClimbMeters = activity.climbMeters || (preciseVamData && preciseVamData.climbMeters);
+    
     // Cargar streams de datos cuando el usuario cambia a la pestaña de mapa o gráficos
     useEffect(() => {
       // Solo cargar si estamos en el cliente, en la pestaña de mapa o gráficos y no tenemos datos
@@ -601,12 +646,95 @@ function DashboardContent() {
         activity[key] !== undefined
       );
 
-    // Calcular VAM (Velocidad de Ascenso Media) en metros/hora
-    const calculateVAM = (elevationGain, movingTime) => {
-      // Convertir tiempo total en segundos a horas
-      const movingTimeHours = movingTime / 3600;
-      if (movingTimeHours === 0 || !elevationGain) return 0;
-      return Math.round(elevationGain / movingTimeHours);
+    // Funciones de formato
+    const formatDuration = (seconds) => {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+      } else if (hours === 0 && minutes > 0) {
+        return `${minutes}m`;
+      } else {
+        return `${seconds}s`;
+      }
+    };
+
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      const options = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
+      const dayOfWeek = new Intl.DateTimeFormat('es-ES', { weekday: 'short' }).format(date);
+      const formattedDate = new Intl.DateTimeFormat('es-ES', options).format(date);
+      
+      return `${dayOfWeek}, ${formattedDate}`;
+    };
+
+    const getIcon = (type) => {
+      switch (type) {
+        case 'Run': return '🏃';
+        case 'Ride': return '🚴';
+        case 'Swim': return '🏊';
+        case 'Walk': return '🚶';
+        case 'Hike': return '🥾';
+        case 'TrailRun': return '🏃';
+        default: return '��';
+      }
+    };
+
+    const formatDistance = (meters) => {
+      const km = meters / 1000;
+      return `${km.toFixed(2)} km`;
+    };
+
+    const formatDistanceShort = (meters) => {
+      const km = meters / 1000;
+      return km < 10 ? `${km.toFixed(2)}` : `${Math.round(km * 100) / 100}`;
+    };
+
+    const formatElevation = (meters) => {
+      return `${Math.round(meters)} m`;
+    };
+
+    const formatSpeed = (metersPerSecond) => {
+      const kmPerHour = metersPerSecond * 3.6;
+      return `${kmPerHour.toFixed(1)} km/h`;
+    };
+
+    const formatSpeedShort = (metersPerSecond) => {
+      const kmPerHour = metersPerSecond * 3.6;
+      return `${kmPerHour.toFixed(1)}`;
+    };
+
+    const formatPace = (metersPerSecond) => {
+      const secondsPerKm = 1000 / metersPerSecond;
+      const minutes = Math.floor(secondsPerKm / 60);
+      const seconds = Math.floor(secondsPerKm % 60);
+      return `${minutes}:${seconds.toString().padStart(2, '0')} min/km`;
+    };
+
+    const formatPaceShort = (metersPerSecond) => {
+      const secondsPerKm = 1000 / metersPerSecond;
+      const minutes = Math.floor(secondsPerKm / 60);
+      const seconds = Math.floor(secondsPerKm % 60);
+      return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    };
+
+    const formatElevationRatio = (elevationGain, distance) => {
+      if (distance === 0) return '0';
+      const ratio = elevationGain / (distance / 1000);
+      return ratio.toFixed(1);
+    };
+
+    // Formatear tiempo de ascenso
+    const formatClimbTime = (seconds) => {
+      if (!seconds) return "";
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      
+      if (hours > 0) {
+        return `${hours}h${minutes.toString().padStart(2, '0')}`;
+      } else {
+        return `${minutes}min`;
+      }
     };
 
     if (!activity) return null;
@@ -653,7 +781,12 @@ function DashboardContent() {
                   <div>
                     <div className="text-xs text-neutral-300">⬆️ TheVAM</div>
                     <div className="text-orange-400 font-bold text-lg">
-                      {calculateVAM(activity.total_elevation_gain, activity.moving_time)} m/h
+                      {displayVam} m/h
+                      {displayClimbTime && displayClimbMeters && (
+                        <span className="text-xs ml-1 font-normal text-neutral-300">
+                          ({Math.round(displayClimbMeters)}m / {formatClimbTime(displayClimbTime)})
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
@@ -872,84 +1005,6 @@ function DashboardContent() {
         )}
       </div>
     );
-  };
-
-  // Funciones de formato
-  const formatDuration = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    if (hours > 0) {
-      return `${hours}h ${minutes}m`;
-    } else if (hours === 0 && minutes > 0) {
-      return `${minutes}m`;
-    } else {
-      return `${seconds}s`;
-    }
-  };
-
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const options = { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' };
-    const dayOfWeek = new Intl.DateTimeFormat('es-ES', { weekday: 'short' }).format(date);
-    const formattedDate = new Intl.DateTimeFormat('es-ES', options).format(date);
-    
-    return `${dayOfWeek}, ${formattedDate}`;
-  };
-
-  const getIcon = (type) => {
-    switch (type) {
-      case 'Run': return '🏃';
-      case 'Ride': return '🚴';
-      case 'Swim': return '🏊';
-      case 'Walk': return '🚶';
-      case 'Hike': return '🥾';
-      case 'TrailRun': return '🏃';
-      default: return '🏆';
-    }
-  };
-
-  const formatDistance = (meters) => {
-    const km = meters / 1000;
-    return `${km.toFixed(2)} km`;
-  };
-
-  const formatDistanceShort = (meters) => {
-    const km = meters / 1000;
-    return km < 10 ? `${km.toFixed(2)}` : `${Math.round(km * 100) / 100}`;
-  };
-
-  const formatElevation = (meters) => {
-    return `${Math.round(meters)} m`;
-  };
-
-  const formatSpeed = (metersPerSecond) => {
-    const kmPerHour = metersPerSecond * 3.6;
-    return `${kmPerHour.toFixed(1)} km/h`;
-  };
-
-  const formatSpeedShort = (metersPerSecond) => {
-    const kmPerHour = metersPerSecond * 3.6;
-    return `${kmPerHour.toFixed(1)}`;
-  };
-
-  const formatPace = (metersPerSecond) => {
-    const secondsPerKm = 1000 / metersPerSecond;
-    const minutes = Math.floor(secondsPerKm / 60);
-    const seconds = Math.floor(secondsPerKm % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')} min/km`;
-  };
-
-  const formatPaceShort = (metersPerSecond) => {
-    const secondsPerKm = 1000 / metersPerSecond;
-    const minutes = Math.floor(secondsPerKm / 60);
-    const seconds = Math.floor(secondsPerKm % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-  };
-
-  const formatElevationRatio = (elevationGain, distance) => {
-    if (distance === 0) return '0';
-    const ratio = elevationGain / (distance / 1000);
-    return ratio.toFixed(1);
   };
 
   if (loading) {

@@ -7,7 +7,7 @@ export async function GET(request) {
   // Usar la variable correcta de .env
   const clientId = process.env.STRAVA_CLIENT_ID;
 
-  // URLS FIJAS - NO USAR VARIABLES
+  // URLS FIJAS - NO USAR VARIABLES DE ENTORNO
   let redirectUri;
   const isProd = process.env.NODE_ENV === 'production';
   
@@ -16,7 +16,8 @@ export async function GET(request) {
     // IMPORTANTE: Debe coincidir EXACTAMENTE con lo configurado en el panel de Strava
     redirectUri = 'https://theratio.vercel.app/api/auth/strava/exchange';
   } else {
-    console.log('Entorno DESARROLLO - Usando URL FIJA para localhost');
+    // IMPORTANTE: Ignorar completamente NEXT_PUBLIC_BASE_URL en desarrollo
+    console.log('Entorno DESARROLLO - Usando URL FIJA para localhost:3000');
     // URL FIJA para desarrollo SIEMPRE en puerto 3000
     redirectUri = 'http://localhost:3000/api/auth/strava/exchange';
   }

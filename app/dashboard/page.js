@@ -285,6 +285,110 @@ function DashboardContent() {
     // Verificar si la actividad tiene fotos
     const hasPhotos = (activity.total_photo_count > 0 || activity.photo_count > 0);
     
+    // Cargar fotos de la actividad cuando se selecciona la pestaña de fotos
+    useEffect(() => {
+      const fetchPhotos = async () => {
+        if (
+          activeTab === 'fotos' && 
+          photos.length === 0 && 
+          !loadingPhotos && 
+          activity && 
+          modalToken && 
+          (activity.total_photo_count > 0 || activity.photo_count > 0)
+        ) {
+          setLoadingPhotos(true);
+          try {
+            console.log(`Cargando fotos para actividad ${activity.id}`);
+            
+            // Obtener fotos de la actividad con los detalles completos
+            const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}?include_all_efforts=false`, {
+              headers: { 'Authorization': `Bearer ${modalToken}` }
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to fetch activity photos');
+            }
+            
+            const data = await response.json();
+            console.log('Datos recibidos de la actividad:', data.photos);
+            
+            const photoUrls = [];
+            
+            // Manejar los diferentes formatos en que pueden venir las fotos
+            if (data.photos) {
+              // Caso 1: Objeto photos con una foto primary
+              if (data.photos.primary && data.photos.primary.urls) {
+                const primaryPhoto = {
+                  id: data.photos.primary.id,
+                  url: data.photos.primary.urls['600'] || data.photos.primary.urls['1024'] || data.photos.primary.urls[0],
+                  caption: data.photos.primary.caption || '',
+                  type: 'photo'
+                };
+                photoUrls.push(primaryPhoto);
+                console.log('Añadida foto principal:', primaryPhoto);
+              }
+              
+              // Caso 2: Array de fotos
+              if (Array.isArray(data.photos)) {
+                data.photos.forEach(photo => {
+                  if (photo && photo.urls) {
+                    photoUrls.push({
+                      id: photo.id,
+                      url: photo.urls['600'] || photo.urls['1024'] || photo.urls[0],
+                      caption: photo.caption || '',
+                      type: 'photo'
+                    });
+                  }
+                });
+                console.log(`Añadidas ${data.photos.length} fotos de array`);
+              }
+              
+              // Caso 3: Array count_by_type e items para categoría "photos"
+              if (data.photos.count_by_type && data.photos.items) {
+                const photos = data.photos.items.filter(item => item.type === 'photo');
+                photos.forEach(photo => {
+                  if (photo && photo.urls) {
+                    photoUrls.push({
+                      id: photo.id,
+                      url: photo.urls['600'] || photo.urls['1024'] || photo.urls[0],
+                      caption: photo.caption || '',
+                      type: 'photo'
+                    });
+                  }
+                });
+                console.log(`Añadidas ${photos.length} fotos de items`);
+                
+                // Videos
+                const videos = data.photos.items.filter(item => item.type === 'video');
+                videos.forEach(video => {
+                  if (video && video.urls) {
+                    photoUrls.push({
+                      id: video.id,
+                      url: video.urls.poster || video.urls['600'] || video.urls[0],
+                      videoUrl: video.urls.video || '',
+                      caption: video.caption || '',
+                      type: 'video'
+                    });
+                  }
+                });
+                console.log(`Añadidos ${videos.length} videos`);
+              }
+            }
+            
+            setPhotos(photoUrls);
+            console.log(`Total de fotos/videos cargados: ${photoUrls.length}`);
+          } catch (error) {
+            console.error('Error fetching activity photos:', error);
+            setPhotos([]);
+          } finally {
+            setLoadingPhotos(false);
+          }
+        }
+      };
+      
+      fetchPhotos();
+    }, [activeTab, photos.length, loadingPhotos, activity, modalToken]);
+    
     // Mapeo de tipos de deporte a etiquetas en español
     const sportTypeLabels = {
       'Run': 'Correr',
@@ -403,6 +507,97 @@ function DashboardContent() {
                 Gráficos
               </button>
             </div>
+          </div>
+          
+          {/* Contenido de las pestañas */}
+          <div className="py-2">
+            {/* Pestaña de Detalles */}
+            {activeTab === 'detalles' && (
+              <div>
+                {/* Aquí iría el contenido de la pestaña Detalles */}
+                <div className="text-center py-4 text-neutral-400">
+                  Detalles de la actividad
+                </div>
+              </div>
+            )}
+            
+            {/* Pestaña de Fotos */}
+            {activeTab === 'fotos' && (
+              <div className="h-full w-full">
+                {loadingPhotos ? (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">Cargando imágenes...</div>
+                  </div>
+                ) : photos.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+                    {photos.map((media, index) => (
+                      <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 mb-4">
+                        {media.type === 'video' && media.videoUrl ? (
+                          <div className="relative">
+                            <video 
+                              controls 
+                              poster={media.url}
+                              className="w-full h-auto"
+                            >
+                              <source src={media.videoUrl} type="video/mp4" />
+                              Tu navegador no soporta el elemento de video.
+                            </video>
+                            <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 text-xs rounded-full">
+                              VIDEO
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <img 
+                              src={media.url} 
+                              alt={media.caption || `Foto ${index + 1}`}
+                              className="w-full h-auto object-cover cursor-pointer"
+                              onClick={() => openLightbox(index)}
+                            />
+                            <div 
+                              className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 text-xs rounded-full opacity-50 hover:opacity-100"
+                              onClick={() => openLightbox(index)}
+                            >
+                              🔍 Ampliar
+                            </div>
+                          </div>
+                        )}
+                        {media.caption && (
+                          <div className="p-2 text-sm text-neutral-300">
+                            {media.caption}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center p-4">
+                    <div className="text-neutral-400">
+                      La actividad indica que tiene fotos, pero no pudimos obtenerlas.
+                      Puedes verlas directamente en Strava.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Pestaña de Mapa */}
+            {activeTab === 'mapa' && (
+              <div className="h-full w-full">
+                <div className="text-center py-4 text-neutral-400">
+                  Mapa de la actividad
+                </div>
+              </div>
+            )}
+            
+            {/* Pestaña de Gráficos */}
+            {activeTab === 'graficos' && (
+              <div className="h-full w-full">
+                <div className="text-center py-4 text-neutral-400">
+                  Gráficos de la actividad
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Link a Strava */}

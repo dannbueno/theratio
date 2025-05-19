@@ -7,15 +7,19 @@ export const dynamic = 'force-dynamic';
 // Endpoint to calculate precise VAM without adding a comment
 export async function POST(request) {
   try {
+    console.log('Iniciando cálculo de VAM preciso');
     // Get request data
     const data = await request.json();
     const { activityId, userId } = data;
     
     if (!activityId || !userId) {
+      console.log('Faltan parámetros: activityId o userId');
       return NextResponse.json({ 
         error: 'activityId and userId are required' 
       }, { status: 400 });
     }
+
+    console.log(`Calculando VAM preciso para actividad ${activityId} del usuario ${userId}`);
 
     // Get valid access token for the user
     const accessToken = await getValidAccessToken(userId);
@@ -27,6 +31,7 @@ export async function POST(request) {
     }
 
     // Get activity details
+    console.log(`Obteniendo detalles de la actividad ${activityId}`);
     const activityResponse = await fetch(`https://www.strava.com/api/v3/activities/${activityId}`, {
       headers: { 'Authorization': `Bearer ${accessToken}` }
     });
@@ -42,15 +47,28 @@ export async function POST(request) {
     if ((activityDetails.sport_type === 'TrailRun' || activityDetails.sport_type === 'Run') && 
         activityDetails.total_elevation_gain > 0) {
       
+      console.log(`Actividad elegible para VAM preciso: ${activityDetails.name} (${activityDetails.sport_type})`);
+      console.log(`Elevación total: ${activityDetails.total_elevation_gain}m`);
+      
       // Calculate precise VAM
+      console.log('Obteniendo streams y calculando VAM preciso...');
       const vamData = await calculatePreciseVAM(activityId, accessToken);
       
-      // Return the VAM data
-      return NextResponse.json(vamData || { 
-        vam: null, 
-        reason: 'Could not calculate precise VAM' 
-      });
+      if (vamData && vamData.vam) {
+        console.log(`VAM preciso calculado: ${vamData.vam} m/h (${Math.round(vamData.climbMeters)}m / ${vamData.climbTime}s)`);
+        // Return the VAM data
+        return NextResponse.json(vamData);
+      } else {
+        console.log('No se pudo calcular el VAM preciso');
+        return NextResponse.json({ 
+          vam: null, 
+          reason: 'Could not calculate precise VAM' 
+        });
+      }
     } else {
+      console.log(`Actividad no elegible para VAM preciso: ${activityDetails.name} (${activityDetails.sport_type})`);
+      console.log(`Elevación total: ${activityDetails.total_elevation_gain}m`);
+      
       return NextResponse.json({ 
         vam: null, 
         reason: 'Activity type not processable or has no elevation' 

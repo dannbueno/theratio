@@ -693,7 +693,54 @@ function DashboardContent() {
       time: []
     });
     const [loading, setLoading] = useState(false);
+    const [loadingVam, setLoadingVam] = useState(false);
+    const [preciseVamData, setPreciseVamData] = useState(null);
     const modalToken = token; // Usar el token efectivo del componente padre
+    
+    // Cargar VAM preciso al abrir el modal si no está disponible
+    useEffect(() => {
+      const fetchPreciseVAM = async () => {
+        // Solo intentar calcular el VAM preciso si no existe ya y es una actividad elegible
+        if (
+          !activity.vam && 
+          (activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && 
+          activity.total_elevation_gain > 0 &&
+          userId
+        ) {
+          setLoadingVam(true);
+          try {
+            const vamResponse = await fetch('/api/strava/calculate-vam', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                activityId: activity.id,
+                userId
+              }),
+            });
+            
+            if (vamResponse.ok) {
+              const vamData = await vamResponse.json();
+              if (vamData && vamData.vam) {
+                setPreciseVamData(vamData);
+              }
+            }
+          } catch (error) {
+            console.error('Error obteniendo VAM preciso:', error);
+          } finally {
+            setLoadingVam(false);
+          }
+        }
+      };
+      
+      fetchPreciseVAM();
+    }, [activity, userId]);
+    
+    // Determinar qué VAM mostrar (del objeto actividad o del cálculo al vuelo)
+    const displayVam = activity.vam || (preciseVamData && preciseVamData.vam);
+    const displayClimbTime = activity.climbTime || (preciseVamData && preciseVamData.climbTime);
+    const displayClimbMeters = activity.climbMeters || (preciseVamData && preciseVamData.climbMeters);
     
     // Cargar streams de datos cuando el usuario cambia a la pestaña de mapa o gráficos
     useEffect(() => {
@@ -971,9 +1018,11 @@ function DashboardContent() {
                       </span>
                     </div>
                     <div className="text-orange-400 font-bold text-lg">
-                      {activity.vam ? (
+                      {loadingVam ? (
+                        <span className="text-neutral-300">Calculando...</span>
+                      ) : displayVam ? (
                         <>
-                          <span>{formatVAM(activity.vam, activity.climbTime, activity.climbMeters)}</span>
+                          <span>{formatVAM(displayVam, displayClimbTime, displayClimbMeters)}</span>
                           <span className="ml-1 text-xs bg-green-600/20 text-green-400 px-1 py-0.5 rounded">Preciso</span>
                         </>
                       ) : (
@@ -989,9 +1038,20 @@ function DashboardContent() {
                 {/* Botón para añadir comentario */}
                 <div className="ml-auto">
                   <button
-                    className="px-3 py-1.5 rounded text-sm font-medium bg-orange-600 hover:bg-orange-700 text-white transition-colors"
+                    className={`px-3 py-1.5 rounded text-sm font-medium ${
+                      loadingVam || (!displayVam && activity.sport_type === 'TrailRun')
+                        ? 'bg-neutral-600 cursor-not-allowed'
+                        : 'bg-orange-600 hover:bg-orange-700'
+                    } text-white transition-colors`}
+                    disabled={loadingVam || (!displayVam && activity.sport_type === 'TrailRun')}
                     onClick={async (e) => {
                       e.stopPropagation();
+                      
+                      // Si estamos cargando o no tenemos VAM preciso para Trail Run, no permitir el comentario
+                      if (loadingVam || (!displayVam && activity.sport_type === 'TrailRun')) {
+                        alert('Por favor espera a que se calcule el VAM preciso antes de añadir un comentario.');
+                        return;
+                      }
                       
                       try {
                         // Llamar al endpoint para añadir comentario
@@ -1009,12 +1069,18 @@ function DashboardContent() {
                         const result = await response.json();
                         
                         if (result.updated) {
+                          // Si tenemos datos actualizados de VAM, actualizar el estado local
+                          if (result.vam && result.climbTime && result.climbMeters) {
+                            setPreciseVamData({
+                              vam: result.vam,
+                              climbTime: result.climbTime,
+                              climbMeters: result.climbMeters
+                            });
+                          }
+                          
                           alert(
                             'Comentario añadido correctamente.\n\n' +
-                            'Nota: El valor de TheVAM en el comentario (' + result.vam + ' m/h) ' +
-                            'puede ser diferente al mostrado en la app cuando usa el método simple, ' +
-                            'ya que para los comentarios se utiliza un cálculo preciso que solo ' +
-                            'considera segmentos de subida.'
+                            `TheVAM usado: ${result.vam} m/h (cálculo preciso que solo considera segmentos de subida).`
                           );
                         } else {
                           alert('Error al añadir comentario: ' + (result.reason || result.error || 'Error desconocido'));

@@ -76,7 +76,10 @@ export async function POST(request) {
       
       return NextResponse.json({
         ...updateResult,
-        activityName: activityDetails.name
+        activityName: activityDetails.name,
+        vam: vamData?.vam || null,
+        climbTime: vamData?.climbTime || null,
+        climbMeters: vamData?.climbMeters || null
       });
     } else {
       return NextResponse.json({ 

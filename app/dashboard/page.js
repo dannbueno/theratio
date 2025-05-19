@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import html2canvas from 'html2canvas';
 import dynamic from 'next/dynamic';
+import ImageViewer from '../components/ImageViewer';
 
 // Importar Chart.js para los gráficos
 import { Chart as ChartJS, LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend } from 'chart.js';
@@ -697,52 +698,15 @@ function DashboardContent() {
     const [preciseVamData, setPreciseVamData] = useState(null);
     const [photos, setPhotos] = useState([]);
     const [loadingPhotos, setLoadingPhotos] = useState(false);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
     const modalToken = token; // Usar el token efectivo del componente padre
     
-    // Cargar VAM preciso al abrir el modal si no está disponible
-    useEffect(() => {
-      const fetchPreciseVAM = async () => {
-        // Solo intentar calcular el VAM preciso si no existe ya y es una actividad elegible
-        if (
-          !activity.vam && 
-          (activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && 
-          activity.total_elevation_gain > 0 &&
-          userId
-        ) {
-          setLoadingVam(true);
-          try {
-            const vamResponse = await fetch('/api/strava/calculate-vam', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                activityId: activity.id,
-                userId
-              }),
-            });
-            
-            if (vamResponse.ok) {
-              const vamData = await vamResponse.json();
-              if (vamData && vamData.vam) {
-                setPreciseVamData(vamData);
-              }
-            }
-          } catch (error) {
-            console.error('Error obteniendo VAM preciso:', error);
-          } finally {
-            setLoadingVam(false);
-          }
-        }
-      };
-      
-      fetchPreciseVAM();
-    }, [activity, userId]);
-    
-    // Determinar qué VAM mostrar (del objeto actividad o del cálculo al vuelo)
-    const displayVam = activity.vam || (preciseVamData && preciseVamData.vam);
-    const displayClimbTime = activity.climbTime || (preciseVamData && preciseVamData.climbTime);
-    const displayClimbMeters = activity.climbMeters || (preciseVamData && preciseVamData.climbMeters);
+    // Función para abrir el lightbox con una imagen específica
+    const openLightbox = (index) => {
+      setCurrentPhotoIndex(index);
+      setLightboxOpen(true);
+    };
     
     // Cargar streams de datos cuando el usuario cambia a la pestaña de mapa o gráficos
     useEffect(() => {
@@ -1074,6 +1038,51 @@ function DashboardContent() {
         (activity[key] !== 0 || key === 'distance' || key === 'moving_time' || key === 'elapsed_time')
       );
     
+    // Cargar VAM preciso al abrir el modal si no está disponible
+    useEffect(() => {
+      const fetchPreciseVAM = async () => {
+        // Solo intentar calcular el VAM preciso si no existe ya y es una actividad elegible
+        if (
+          !activity.vam && 
+          (activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && 
+          activity.total_elevation_gain > 0 &&
+          userId
+        ) {
+          setLoadingVam(true);
+          try {
+            const vamResponse = await fetch('/api/strava/calculate-vam', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                activityId: activity.id,
+                userId
+              }),
+            });
+            
+            if (vamResponse.ok) {
+              const vamData = await vamResponse.json();
+              if (vamData && vamData.vam) {
+                setPreciseVamData(vamData);
+              }
+            }
+          } catch (error) {
+            console.error('Error obteniendo VAM preciso:', error);
+          } finally {
+            setLoadingVam(false);
+          }
+        }
+      };
+      
+      fetchPreciseVAM();
+    }, [activity, userId]);
+    
+    // Determinar qué VAM mostrar (del objeto actividad o del cálculo al vuelo)
+    const displayVam = activity.vam || (preciseVamData && preciseVamData.vam);
+    const displayClimbTime = activity.climbTime || (preciseVamData && preciseVamData.climbTime);
+    const displayClimbMeters = activity.climbMeters || (preciseVamData && preciseVamData.climbMeters);
+
     if (!activity) return null;
     
     return (
@@ -1130,15 +1139,10 @@ function DashboardContent() {
                     <div className="text-orange-400 font-bold text-lg">
                       {loadingVam ? (
                         <span className="text-neutral-300">Calculando...</span>
-                      ) : displayVam ? (
+                      ) : (
                         <>
                           <span>{formatVAM(displayVam, displayClimbTime, displayClimbMeters)}</span>
                           <span className="ml-1 text-xs bg-green-600/20 text-green-400 px-1 py-0.5 rounded">Preciso</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>{calculateVAM(activity.total_elevation_gain, activity.moving_time)} m/h</span>
-                          <span className="ml-1 text-xs bg-neutral-700/40 text-neutral-400 px-1 py-0.5 rounded">Simple</span>
                         </>
                       )}
                     </div>
@@ -1337,13 +1341,13 @@ function DashboardContent() {
                 ) : photos.length > 0 ? (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
                     {photos.map((media, index) => (
-                      <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 mb-4">
+                      <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 mb-4 flex flex-col h-full">
                         {media.type === 'video' && media.videoUrl ? (
-                          <div className="relative">
+                          <div className="relative flex-grow flex items-center justify-center">
                             <video 
                               controls 
                               poster={media.url}
-                              className="w-full h-auto"
+                              className="w-full h-auto object-contain max-h-[200px]"
                             >
                               <source src={media.videoUrl} type="video/mp4" />
                               Tu navegador no soporta el elemento de video.
@@ -1353,12 +1357,17 @@ function DashboardContent() {
                             </div>
                           </div>
                         ) : (
-                          <div className="relative">
-                            <img 
-                              src={media.url} 
-                              alt={media.caption || `Foto ${index + 1}`} 
-                              className="w-full h-auto object-cover"
-                            />
+                          <div className="relative flex-grow" onClick={() => openLightbox(index)}>
+                            <div className="flex items-center justify-center overflow-hidden aspect-video bg-neutral-900">
+                              <img 
+                                src={media.url} 
+                                alt={media.caption || `Foto ${index + 1}`} 
+                                className="object-contain w-full h-full max-h-[200px] hover:opacity-90 transition-opacity cursor-pointer"
+                              />
+                            </div>
+                            <div className="absolute bottom-2 right-2 bg-black/70 text-white px-2 py-1 text-xs rounded-full opacity-50 hover:opacity-100">
+                              🔍 Ampliar
+                            </div>
                           </div>
                         )}
                         {media.caption && (
@@ -1394,6 +1403,13 @@ function DashboardContent() {
           </div>
         </div>
       </div>
+      {lightboxOpen && (
+        <ImageViewer 
+          images={photos} 
+          initialIndex={currentPhotoIndex} 
+          onClose={() => setLightboxOpen(false)} 
+        />
+      )}
     );
   };
 

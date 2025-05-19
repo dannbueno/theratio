@@ -697,6 +697,8 @@ function DashboardContent() {
     const [preciseVamData, setPreciseVamData] = useState(null);
     const [photos, setPhotos] = useState([]);
     const [loadingPhotos, setLoadingPhotos] = useState(false);
+    const [segments, setSegments] = useState([]);
+    const [loadingSegments, setLoadingSegments] = useState(false);
     const modalToken = token; // Usar el token efectivo del componente padre
     
     // Cargar VAM preciso al abrir el modal si no está disponible
@@ -901,6 +903,51 @@ function DashboardContent() {
       fetchPhotos();
     }, [activeTab, activity, modalToken, photos.length, loadingPhotos]);
 
+    // Cargar segmentos de la actividad
+    useEffect(() => {
+      const fetchSegments = async () => {
+        // Solo cargar si estamos en la pestaña de segmentos y no tenemos datos
+        if (
+          activeTab === 'segmentos' && 
+          segments.length === 0 && 
+          !loadingSegments && 
+          activity && 
+          modalToken
+        ) {
+          setLoadingSegments(true);
+          try {
+            console.log(`Cargando segmentos para actividad ${activity.id}`);
+            
+            // Obtener detalles completos de la actividad con los segmentos
+            const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}?include_all_efforts=true`, {
+              headers: { 'Authorization': `Bearer ${modalToken}` }
+            });
+            
+            if (!response.ok) {
+              throw new Error('Error al obtener segmentos de la actividad');
+            }
+            
+            const data = await response.json();
+            
+            if (data.segment_efforts && Array.isArray(data.segment_efforts)) {
+              console.log(`Encontrados ${data.segment_efforts.length} segmentos`);
+              setSegments(data.segment_efforts);
+            } else {
+              console.log('No se encontraron segmentos en esta actividad');
+              setSegments([]);
+            }
+          } catch (error) {
+            console.error('Error obteniendo segmentos:', error);
+            setSegments([]);
+          } finally {
+            setLoadingSegments(false);
+          }
+        }
+      };
+      
+      fetchSegments();
+    }, [activeTab, segments.length, loadingSegments, activity, modalToken]);
+    
     // Verificar si la actividad tiene fotos
     const hasPhotos = (activity.total_photo_count > 0 || activity.photo_count > 0);
     
@@ -1230,6 +1277,12 @@ function DashboardContent() {
             >
               Gráficos
             </button>
+            <button
+              className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'segmentos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              onClick={() => setActiveTab('segmentos')}
+            >
+              Segmentos
+            </button>
             {hasPhotos && (
               <button
                 className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'fotos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
@@ -1374,6 +1427,99 @@ function DashboardContent() {
                     <div className="text-neutral-400">
                       La actividad indica que tiene fotos, pero no pudimos obtenerlas.
                       Puedes verlas directamente en Strava.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+            
+            {/* Pestaña de Segmentos */}
+            {activeTab === 'segmentos' && (
+              <div className="h-full w-full">
+                {loadingSegments ? (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">Cargando segmentos...</div>
+                  </div>
+                ) : segments.length > 0 ? (
+                  <div className="p-2">
+                    <h3 className="text-sm text-neutral-400 mb-2">Segmentos completados en esta actividad</h3>
+                    <div className="space-y-3">
+                      {segments.map((segment, index) => (
+                        <div key={index} className="bg-neutral-800 border border-neutral-700 rounded-lg p-3">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-semibold text-white">{segment.segment.name}</h4>
+                              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1 mt-1 text-sm">
+                                <div>
+                                  <span className="text-neutral-400">Distancia:</span>{' '}
+                                  <span className="text-white">{formatDistance(segment.segment.distance)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-neutral-400">Desnivel:</span>{' '}
+                                  <span className="text-white">
+                                    {formatElevation(segment.segment.elevation_high - segment.segment.elevation_low)}
+                                  </span>
+                                </div>
+                                <div>
+                                  <span className="text-neutral-400">Tiempo:</span>{' '}
+                                  <span className="text-white">{formatDuration(segment.elapsed_time)}</span>
+                                </div>
+                                <div>
+                                  <span className="text-neutral-400">
+                                    {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? 'Ritmo:' : 'Velocidad:'}
+                                  </span>{' '}
+                                  <span className="text-white">
+                                    {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' 
+                                      ? formatPace(segment.segment.distance / segment.elapsed_time) 
+                                      : formatSpeed(segment.segment.distance / segment.elapsed_time)}
+                                  </span>
+                                </div>
+                                {segment.segment.average_grade && (
+                                  <div>
+                                    <span className="text-neutral-400">Pendiente:</span>{' '}
+                                    <span className="text-white">{segment.segment.average_grade.toFixed(1)}%</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <div className="ml-2 text-right">
+                              {segment.pr_rank === 1 && (
+                                <div className="text-yellow-400 font-bold flex items-center">
+                                  <span className="mr-1">🏆</span> PR
+                                </div>
+                              )}
+                              {segment.achievements && segment.achievements.length > 0 && segment.pr_rank !== 1 && (
+                                <div className="text-orange-400 font-medium">
+                                  {segment.pr_rank ? `#${segment.pr_rank}` : '🏅'}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          {segment.segment.activity_type && (
+                            <div className="text-xs text-neutral-500 mt-1">
+                              Tipo: {segment.segment.activity_type}
+                              {segment.segment.city && ` • ${segment.segment.city}`}
+                              {segment.segment.state && `, ${segment.segment.state}`}
+                            </div>
+                          )}
+                          <div className="text-xs mt-2">
+                            <a 
+                              href={`https://www.strava.com/segments/${segment.segment.id}`} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-orange-400 hover:underline"
+                            >
+                              Ver segmento en Strava →
+                            </a>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400 p-4 text-center">
+                      No hay segmentos en esta actividad o no tienes permisos para verlos.
                     </div>
                   </div>
                 )}

@@ -11,13 +11,15 @@ export async function GET(request) {
   let redirectUri;
   
   if (process.env.NODE_ENV === 'production') {
-    // En producción, usar una URL fija para evitar problemas
+    // En producción, usar EXACTAMENTE lo que está configurado en Strava
     redirectUri = encodeURIComponent('https://theratio.vercel.app/api/auth/strava/exchange');
-    console.log("Entorno de producción detectado, usando URL fija");
+    console.log("Entorno de producción detectado, usando URL fija de producción");
   } else {
-    // En desarrollo, usar localhost con puerto específico
-    redirectUri = encodeURIComponent('http://localhost:3000/api/auth/strava/exchange');
-    console.log("Entorno de desarrollo detectado");
+    // En desarrollo, usar el puerto que aparezca en la URL actual de la solicitud
+    const host = request.headers.get('host') || 'localhost:3000';
+    const protocol = host.startsWith('localhost') ? 'http' : 'https';
+    redirectUri = encodeURIComponent(`${protocol}://${host}/api/auth/strava/exchange`);
+    console.log(`Entorno de desarrollo detectado, usando ${protocol}://${host}`);
   }
   
   console.log("ID de cliente Strava:", clientId);

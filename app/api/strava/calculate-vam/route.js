@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getValidAccessToken, calculatePreciseVAM } from '../../../../lib/strava.js';
+import { cookies } from 'next/headers';
 
 // Mark as dynamic to avoid caching
 export const dynamic = 'force-dynamic';
@@ -36,13 +37,21 @@ export async function POST(request) {
 
     console.log(`Calculando VAM preciso para actividad ${activityId} del usuario ${userId}`);
 
-    // Get valid access token for the user
-    const accessToken = await getValidAccessToken(userId);
+    // Get valid access token for the user from database
+    let accessToken = await getValidAccessToken(userId);
 
-    // If no token, we can't proceed
+    // Si no hay token en la BD, intentar obtenerlo de las cookies de sesión
     if (!accessToken) {
-      console.error('No access token found for user:', userId);
-      return NextResponse.json({ error: 'Token not found' }, { status: 400 });
+      console.log('No se encontró token en la base de datos, intentando obtenerlo de la sesión...');
+      const cookieStore = cookies();
+      accessToken = cookieStore.get('strava_access_token')?.value;
+      
+      if (accessToken) {
+        console.log('Token obtenido correctamente de la sesión');
+      } else {
+        console.error('No access token found in database or session for user:', userId);
+        return NextResponse.json({ error: 'Token not found' }, { status: 400 });
+      }
     }
 
     // Get activity details

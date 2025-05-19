@@ -39,7 +39,7 @@ export async function POST(request) {
 
     // Configuración para hacer la solicitud a Strava
     const tokenUrl = 'https://www.strava.com/api/v3/oauth/token';
-    const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+    const clientId = process.env.STRAVA_CLIENT_ID;
     const clientSecret = process.env.STRAVA_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {

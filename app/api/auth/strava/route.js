@@ -4,12 +4,14 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-  const clientId = process.env.NEXT_PUBLIC_STRAVA_CLIENT_ID;
+  // Usar la variable correcta de .env
+  const clientId = process.env.STRAVA_CLIENT_ID;
   
-  // Usar la URL exacta que está configurada en la app de Strava
-  // IMPORTANTE: Asegúrate de que esta URL coincida exactamente con la configurada en tu app de Strava
-  const redirectUri = encodeURIComponent('https://theratio.vercel.app');
+  // Usar la URL base desde la variable de entorno para soportar desarrollo y producción
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3001';
+  const redirectUri = encodeURIComponent(baseUrl);
   
+  console.log("ID de cliente Strava:", clientId);
   console.log("URL de redirección utilizada:", redirectUri);
   
   // Scope ampliado para que coincida con lo que aparece en el log

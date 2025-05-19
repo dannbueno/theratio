@@ -389,6 +389,58 @@ function DashboardContent() {
       fetchPhotos();
     }, [activeTab, photos.length, loadingPhotos, activity, modalToken]);
     
+    // Cargar streams de datos cuando el usuario cambia a la pestaña de mapa o gráficos
+    useEffect(() => {
+      // Solo cargar si estamos en el cliente, en la pestaña de mapa o gráficos y no tenemos datos
+      if (
+        typeof window !== 'undefined' && 
+        (activeTab === 'mapa' || activeTab === 'graficos') && 
+        activityStreams.polyline.length === 0 && 
+        !loading && 
+        activity && 
+        modalToken
+      ) {
+        const fetchActivityStreams = async () => {
+          setLoading(true);
+          try {
+            // Obtener datos del polilinea y otros streams
+            const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=latlng,distance,altitude,heartrate,time&key_by_type=true`, {
+              headers: { 'Authorization': `Bearer ${modalToken}` }
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to fetch activity streams');
+            }
+            
+            const data = await response.json();
+            
+            // Preparar los datos para el mapa y los gráficos
+            setActivityStreams({
+              polyline: data.latlng ? data.latlng.data : [],
+              distance: data.distance ? data.distance.data : [],
+              altitude: data.altitude ? data.altitude.data : [],
+              heartrate: data.heartrate ? data.heartrate.data : [],
+              time: data.time ? data.time.data : []
+            });
+          } catch (error) {
+            console.error('Error fetching activity streams:', error);
+            // Establecer un array vacío en caso de error
+            setActivityStreams({
+              polyline: [],
+              distance: [],
+              altitude: [],
+              heartrate: [],
+              time: []
+            });
+          } finally {
+            setLoading(false);
+          }
+        };
+        
+        fetchActivityStreams();
+      }
+    }, [activeTab, activityStreams.polyline.length, loading, activity, modalToken]);
+    
     // Mapeo de tipos de deporte a etiquetas en español
     const sportTypeLabels = {
       'Run': 'Correr',
@@ -446,6 +498,72 @@ function DashboardContent() {
       'elev_high', 'elev_low', 'suffer_score', 'average_temp', 'calories',
       'start_latitude', 'start_longitude', 'end_latitude', 'end_longitude'
     ];
+
+    // Formatear nombre de campo para visualización
+    const formatFieldName = (key) => {
+      const fieldMap = {
+        'distance': 'Distancia',
+        'moving_time': 'Tiempo en movimiento',
+        'elapsed_time': 'Tiempo total',
+        'total_elevation_gain': 'Desnivel positivo',
+        'average_speed': 'Velocidad media',
+        'max_speed': 'Velocidad máxima',
+        'average_heartrate': 'FC media',
+        'max_heartrate': 'FC máxima',
+        'average_cadence': 'Cadencia media',
+        'average_watts': 'Potencia media',
+        'weighted_average_watts': 'Potencia media ponderada',
+        'max_watts': 'Potencia máxima',
+        'calories': 'Calorías',
+        'elev_high': 'Altitud máxima',
+        'elev_low': 'Altitud mínima',
+        'suffer_score': 'Suffer Score',
+        'average_temp': 'Temperatura media',
+        'start_latitude': 'Latitud inicial',
+        'start_longitude': 'Longitud inicial',
+        'end_latitude': 'Latitud final',
+        'end_longitude': 'Longitud final'
+      };
+      return fieldMap[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    };
+    
+    // Formatear valor de campo para visualización
+    const formatFieldValue = (key, value) => {
+      switch(key) {
+        case 'distance':
+          return formatDistance(value);
+        case 'moving_time':
+        case 'elapsed_time':
+          return formatDuration(value);
+        case 'average_speed':
+          return activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' 
+            ? formatPace(value) 
+            : formatSpeed(value);
+        case 'max_speed':
+          return activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' 
+            ? formatPace(value) 
+            : formatSpeed(value);
+        case 'total_elevation_gain':
+        case 'elev_high':
+        case 'elev_low':
+          return formatElevation(value);
+        case 'average_heartrate':
+        case 'max_heartrate':
+          return `${Math.round(value)} ppm`;
+        case 'average_cadence':
+          return `${Math.round(value)} rpm`;
+        case 'average_watts':
+        case 'weighted_average_watts':
+        case 'max_watts':
+          return `${Math.round(value)} W`;
+        case 'average_temp':
+          return `${value}°C`;
+        case 'calories':
+          return `${Math.round(value)} kcal`;
+        default:
+          return typeof value === 'number' ? value.toString() : value;
+      }
+    };
 
     if (!activity) return null;
     
@@ -513,10 +631,73 @@ function DashboardContent() {
           <div className="py-2">
             {/* Pestaña de Detalles */}
             {activeTab === 'detalles' && (
-              <div>
-                {/* Aquí iría el contenido de la pestaña Detalles */}
-                <div className="text-center py-4 text-neutral-400">
-                  Detalles de la actividad
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  {/* Estadísticas principales */}
+                  <div className="bg-neutral-800 p-4 rounded-lg">
+                    <h3 className="text-sm text-neutral-400 mb-1">Distancia</h3>
+                    <p className="text-xl font-bold text-white">{formatDistance(activity.distance)}</p>
+                  </div>
+                  <div className="bg-neutral-800 p-4 rounded-lg">
+                    <h3 className="text-sm text-neutral-400 mb-1">Duración</h3>
+                    <p className="text-xl font-bold text-white">{formatDuration(activity.moving_time)}</p>
+                  </div>
+                  <div className="bg-neutral-800 p-4 rounded-lg">
+                    <h3 className="text-sm text-neutral-400 mb-1">Elevación</h3>
+                    <p className="text-xl font-bold text-white">{formatElevation(activity.total_elevation_gain)}</p>
+                  </div>
+                  {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? (
+                    <div className="bg-neutral-800 p-4 rounded-lg">
+                      <h3 className="text-sm text-neutral-400 mb-1">Ritmo medio</h3>
+                      <p className="text-xl font-bold text-white">{formatPace(activity.average_speed)}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-neutral-800 p-4 rounded-lg">
+                      <h3 className="text-sm text-neutral-400 mb-1">Velocidad media</h3>
+                      <p className="text-xl font-bold text-white">{formatSpeed(activity.average_speed)}</p>
+                    </div>
+                  )}
+                  {activity.sport_type === 'TrailRun' && (
+                    <div className="bg-neutral-800 p-4 rounded-lg">
+                      <h3 className="text-sm text-neutral-400 mb-1">Ratio m+/km</h3>
+                      <p className="text-xl font-bold text-white">{formatElevationRatio(activity.total_elevation_gain, activity.distance)}</p>
+                    </div>
+                  )}
+                  {activity.average_heartrate && (
+                    <div className="bg-neutral-800 p-4 rounded-lg">
+                      <h3 className="text-sm text-neutral-400 mb-1">FC Media</h3>
+                      <p className="text-xl font-bold text-white">{Math.round(activity.average_heartrate)} ppm</p>
+                    </div>
+                  )}
+                  {activity.max_heartrate && (
+                    <div className="bg-neutral-800 p-4 rounded-lg">
+                      <h3 className="text-sm text-neutral-400 mb-1">FC Máxima</h3>
+                      <p className="text-xl font-bold text-white">{Math.round(activity.max_heartrate)} ppm</p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Campos adicionales si están disponibles */}
+                <div className="mt-4">
+                  <h3 className="text-sm font-medium text-neutral-400 border-b border-neutral-700 pb-2 mb-3">Datos adicionales</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                    {Object.keys(activity)
+                      .filter(key => !hiddenFields.includes(key) && activity[key] !== null && activity[key] !== undefined)
+                      .sort((a, b) => {
+                        const aIndex = fieldOrder.indexOf(a);
+                        const bIndex = fieldOrder.indexOf(b);
+                        if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+                        if (aIndex === -1) return 1;
+                        if (bIndex === -1) return -1;
+                        return aIndex - bIndex;
+                      })
+                      .map(key => (
+                        <div key={key} className="mb-2">
+                          <span className="text-sm text-neutral-400">{formatFieldName(key)}: </span>
+                          <span className="text-sm text-white font-medium">{formatFieldValue(key, activity[key])}</span>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               </div>
             )}
@@ -583,19 +764,36 @@ function DashboardContent() {
             
             {/* Pestaña de Mapa */}
             {activeTab === 'mapa' && (
-              <div className="h-full w-full">
-                <div className="text-center py-4 text-neutral-400">
-                  Mapa de la actividad
-                </div>
+              <div className="h-full w-full" style={{ minHeight: '400px' }}>
+                {loading ? (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">Cargando mapa...</div>
+                  </div>
+                ) : (
+                  <MapComponent polyline={activityStreams.polyline} />
+                )}
               </div>
             )}
             
             {/* Pestaña de Gráficos */}
             {activeTab === 'graficos' && (
-              <div className="h-full w-full">
-                <div className="text-center py-4 text-neutral-400">
-                  Gráficos de la actividad
-                </div>
+              <div className="h-full w-full" style={{ minHeight: '400px' }}>
+                {loading ? (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">Cargando gráficos...</div>
+                  </div>
+                ) : (
+                  <div className="h-full w-full">
+                    <h3 className="text-sm text-neutral-400 mb-2">Perfil de altitud</h3>
+                    <div className="h-[calc(100%-30px)] w-full">
+                      <AltimetryChart 
+                        activityStreamDistance={activityStreams.distance} 
+                        activityStreamAltitude={activityStreams.altitude} 
+                        activityStreamHeartRate={activityStreams.heartrate} 
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

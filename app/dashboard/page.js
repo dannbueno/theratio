@@ -695,6 +695,8 @@ function DashboardContent() {
     const [loading, setLoading] = useState(false);
     const [loadingVam, setLoadingVam] = useState(false);
     const [preciseVamData, setPreciseVamData] = useState(null);
+    const [photos, setPhotos] = useState([]);
+    const [loadingPhotos, setLoadingPhotos] = useState(false);
     const modalToken = token; // Usar el token efectivo del componente padre
     
     // Cargar VAM preciso al abrir el modal si no está disponible
@@ -793,6 +795,114 @@ function DashboardContent() {
         fetchActivityStreams();
       }
     }, [activeTab, activityStreams.polyline.length, loading, activity, modalToken]);
+    
+    // Cargar fotos de la actividad si tiene
+    useEffect(() => {
+      const fetchPhotos = async () => {
+        // Solo cargar si estamos en la pestaña de fotos y no tenemos datos
+        if (
+          activeTab === 'fotos' && 
+          photos.length === 0 && 
+          !loadingPhotos && 
+          activity && 
+          modalToken && 
+          (activity.total_photo_count > 0 || activity.photo_count > 0)
+        ) {
+          setLoadingPhotos(true);
+          try {
+            console.log(`Cargando fotos para actividad ${activity.id}`);
+            
+            // Obtener fotos de la actividad
+            const response = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}?include_all_efforts=false`, {
+              headers: { 'Authorization': `Bearer ${modalToken}` }
+            });
+            
+            if (!response.ok) {
+              throw new Error('Failed to fetch activity photos');
+            }
+            
+            const data = await response.json();
+            console.log('Datos recibidos de la actividad:', data.photos);
+            
+            const photoUrls = [];
+            
+            // Manejar los diferentes formatos en que pueden venir las fotos
+            if (data.photos) {
+              // Caso 1: Objeto photos con una foto primary
+              if (data.photos.primary && data.photos.primary.urls) {
+                const primaryPhoto = {
+                  id: data.photos.primary.id,
+                  url: data.photos.primary.urls['600'] || data.photos.primary.urls['1024'] || data.photos.primary.urls[0],
+                  caption: data.photos.primary.caption || '',
+                  type: 'photo'
+                };
+                photoUrls.push(primaryPhoto);
+                console.log('Añadida foto principal:', primaryPhoto);
+              }
+              
+              // Caso 2: Array de fotos
+              if (Array.isArray(data.photos)) {
+                data.photos.forEach(photo => {
+                  if (photo && photo.urls) {
+                    photoUrls.push({
+                      id: photo.id,
+                      url: photo.urls['600'] || photo.urls['1024'] || photo.urls[0],
+                      caption: photo.caption || '',
+                      type: 'photo'
+                    });
+                  }
+                });
+                console.log(`Añadidas ${data.photos.length} fotos de array`);
+              }
+              
+              // Caso 3: Array count_by_type e items para categoría "photos"
+              if (data.photos.count_by_type && data.photos.items) {
+                const photos = data.photos.items.filter(item => item.type === 'photo');
+                photos.forEach(photo => {
+                  if (photo && photo.urls) {
+                    photoUrls.push({
+                      id: photo.id,
+                      url: photo.urls['600'] || photo.urls['1024'] || photo.urls[0],
+                      caption: photo.caption || '',
+                      type: 'photo'
+                    });
+                  }
+                });
+                console.log(`Añadidas ${photos.length} fotos de items`);
+                
+                // Videos
+                const videos = data.photos.items.filter(item => item.type === 'video');
+                videos.forEach(video => {
+                  if (video && video.urls) {
+                    photoUrls.push({
+                      id: video.id,
+                      url: video.urls.poster || video.urls['600'] || video.urls[0],
+                      videoUrl: video.urls.video || '',
+                      caption: video.caption || '',
+                      type: 'video'
+                    });
+                  }
+                });
+                console.log(`Añadidos ${videos.length} videos`);
+              }
+            }
+            
+            setPhotos(photoUrls);
+            console.log(`Total de fotos/videos cargados: ${photoUrls.length}`);
+          } catch (error) {
+            console.error('Error fetching activity photos:', error);
+            setPhotos([]);
+          } finally {
+            setLoadingPhotos(false);
+          }
+        }
+      };
+      
+      fetchPhotos();
+    }, [activeTab, activity, modalToken, photos.length, loadingPhotos]);
+
+    // Verificar si la actividad tiene fotos
+    const hasPhotos = (activity.total_photo_count > 0 || activity.photo_count > 0);
     
     // Lista de claves a ocultar
     const hiddenFields = [
@@ -1120,6 +1230,14 @@ function DashboardContent() {
             >
               Gráficos
             </button>
+            {hasPhotos && (
+              <button
+                className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'fotos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+                onClick={() => setActiveTab('fotos')}
+              >
+                Imágenes/Videos
+              </button>
+            )}
           </div>
           
           {/* Contenido de las pestañas con ancho y altura fijos */}
@@ -1203,6 +1321,59 @@ function DashboardContent() {
                         activityStreamAltitude={activityStreams.altitude} 
                         activityStreamHeartRate={activityStreams.heartrate} 
                       />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Pestaña de Fotos */}
+            {activeTab === 'fotos' && (
+              <div className="h-full w-full">
+                {loadingPhotos ? (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">Cargando imágenes...</div>
+                  </div>
+                ) : photos.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
+                    {photos.map((media, index) => (
+                      <div key={index} className="rounded-lg overflow-hidden bg-neutral-800 mb-4">
+                        {media.type === 'video' && media.videoUrl ? (
+                          <div className="relative">
+                            <video 
+                              controls 
+                              poster={media.url}
+                              className="w-full h-auto"
+                            >
+                              <source src={media.videoUrl} type="video/mp4" />
+                              Tu navegador no soporta el elemento de video.
+                            </video>
+                            <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 text-xs rounded-full">
+                              VIDEO
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="relative">
+                            <img 
+                              src={media.url} 
+                              alt={media.caption || `Foto ${index + 1}`} 
+                              className="w-full h-auto object-cover"
+                            />
+                          </div>
+                        )}
+                        {media.caption && (
+                          <div className="p-2 text-sm text-neutral-300">
+                            {media.caption}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
+                    <div className="text-neutral-400">
+                      La actividad indica que tiene fotos, pero no pudimos obtenerlas.
+                      Puedes verlas directamente en Strava.
                     </div>
                   </div>
                 )}

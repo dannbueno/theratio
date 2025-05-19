@@ -258,7 +258,7 @@ function DashboardContent() {
 
   // El componente ActivityModal corregido
   const ActivityModal = ({ activity, onClose }) => {
-    const [activeTab, setActiveTab] = useState('detalles');
+    const [activeTab, setActiveTab] = useState('datos');
     const [loading, setLoading] = useState(false);
     const [photos, setPhotos] = useState([]);
     const [activityStreams, setActivityStreams] = useState({
@@ -498,6 +498,15 @@ function DashboardContent() {
       'elev_high', 'elev_low', 'suffer_score', 'average_temp', 'calories',
       'start_latitude', 'start_longitude', 'end_latitude', 'end_longitude'
     ];
+    
+    // Grupos de campos para organizar la visualización
+    const fieldGroups = {
+      primary: ['distance', 'moving_time', 'elapsed_time', 'total_elevation_gain'],
+      performance: ['average_speed', 'max_speed', 'average_heartrate', 'max_heartrate', 'average_cadence'],
+      secondary: ['average_watts', 'weighted_average_watts', 'max_watts'],
+      elevation: ['elev_high', 'elev_low', 'suffer_score', 'average_temp', 'calories'],
+      coordinates: ['start_latitude', 'start_longitude', 'end_latitude', 'end_longitude']
+    };
 
     // Formatear nombre de campo para visualización
     const formatFieldName = (key) => {
@@ -506,8 +515,8 @@ function DashboardContent() {
         'moving_time': 'Tiempo en movimiento',
         'elapsed_time': 'Tiempo total',
         'total_elevation_gain': 'Desnivel positivo',
-        'average_speed': 'Velocidad media',
-        'max_speed': 'Velocidad máxima',
+        'average_speed': activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? 'Ritmo medio' : 'Velocidad media',
+        'max_speed': activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? 'Ritmo máximo' : 'Velocidad máxima',
         'average_heartrate': 'FC media',
         'max_heartrate': 'FC máxima',
         'average_cadence': 'Cadencia media',
@@ -565,6 +574,41 @@ function DashboardContent() {
       }
     };
 
+    // Renderizar un campo individual
+    const renderField = (key) => {
+      if (!activity[key] && activity[key] !== 0) return null;
+      return (
+        <div key={key} className="border border-neutral-800 rounded-lg py-1.5 px-2 sm:px-3 inline-flex flex-col">
+          <span className="text-neutral-400 text-xs">{formatFieldName(key)}</span>
+          <span className="text-white font-semibold mt-0.5 text-sm sm:text-base">
+            {formatFieldValue(key, activity[key])}
+          </span>
+        </div>
+      );
+    };
+    
+    // Organizar campos en las secciones disponibles
+    const availableFields = fieldOrder.filter(key => 
+      activity[key] !== undefined && 
+      !hiddenFields.includes(key)
+    );
+    
+    // Campos adicionales que no están en el orden predefinido
+    const extraFields = Object.keys(activity)
+      .filter(key => 
+        !hiddenFields.includes(key) && 
+        !fieldOrder.includes(key) && 
+        activity[key] !== undefined
+      );
+
+    // Calcular VAM (Velocidad de Ascenso Media) en metros/hora
+    const calculateVAM = (elevationGain, movingTime) => {
+      // Convertir tiempo total en segundos a horas
+      const movingTimeHours = movingTime / 3600;
+      if (movingTimeHours === 0 || !elevationGain) return 0;
+      return Math.round(elevationGain / movingTimeHours);
+    };
+
     if (!activity) return null;
     
     return (
@@ -595,111 +639,118 @@ function DashboardContent() {
             </button>
           </div>
           
-          {/* Pestañas de navegación */}
-          <div className="border-b border-neutral-700 mb-4">
-            <div className="flex overflow-x-auto scrollbar-hide">
-              <button
-                className={`px-3 py-2 text-sm font-medium mr-2 ${activeTab === 'detalles' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
-                onClick={() => setActiveTab('detalles')}
-              >
-                Detalles
-              </button>
-              {hasPhotos && (
-                <button
-                  className={`px-3 py-2 text-sm font-medium mr-2 ${activeTab === 'fotos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
-                  onClick={() => setActiveTab('fotos')}
-                >
-                  Fotos
-                </button>
-              )}
-              <button
-                className={`px-3 py-2 text-sm font-medium mr-2 ${activeTab === 'mapa' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
-                onClick={() => setActiveTab('mapa')}
-              >
-                Mapa
-              </button>
-              <button
-                className={`px-3 py-2 text-sm font-medium ${activeTab === 'graficos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
-                onClick={() => setActiveTab('graficos')}
-              >
-                Gráficos
-              </button>
+          {/* Sección para TheRatio y TheVAM en actividades de montaña */}
+          {activity.sport_type === 'TrailRun' && (
+            <div className="mb-4 p-3 bg-neutral-800 border border-neutral-700 rounded-lg">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-6">
+                <div>
+                  <div className="text-xs text-neutral-300">🏔️ TheRatio</div>
+                  <div className="text-orange-400 font-bold text-lg">
+                    {formatElevationRatio(activity.total_elevation_gain, activity.distance)} m/km
+                  </div>
+                </div>
+                {activity.total_elevation_gain > 0 && (
+                  <div>
+                    <div className="text-xs text-neutral-300">⬆️ TheVAM</div>
+                    <div className="text-orange-400 font-bold text-lg">
+                      {calculateVAM(activity.total_elevation_gain, activity.moving_time)} m/h
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+          )}
+          
+          {/* Pestañas de navegación */}
+          <div className="flex border-b border-neutral-700 mb-4 overflow-x-auto">
+            <button
+              className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'datos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              onClick={() => setActiveTab('datos')}
+            >
+              Datos
+            </button>
+            {hasPhotos && (
+              <button
+                className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'fotos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+                onClick={() => setActiveTab('fotos')}
+              >
+                Fotos
+              </button>
+            )}
+            <button
+              className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'mapa' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              onClick={() => setActiveTab('mapa')}
+            >
+              Mapa
+            </button>
+            <button
+              className={`px-3 sm:px-4 py-2 font-medium text-xs sm:text-sm whitespace-nowrap ${activeTab === 'graficos' ? 'text-orange-400 border-b-2 border-orange-400' : 'text-neutral-400 hover:text-white'}`}
+              onClick={() => setActiveTab('graficos')}
+            >
+              Gráficos
+            </button>
           </div>
           
-          {/* Contenido de las pestañas */}
-          <div className="py-2">
-            {/* Pestaña de Detalles */}
-            {activeTab === 'detalles' && (
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {/* Estadísticas principales */}
-                  <div className="bg-neutral-800 p-4 rounded-lg">
-                    <h3 className="text-sm text-neutral-400 mb-1">Distancia</h3>
-                    <p className="text-xl font-bold text-white">{formatDistance(activity.distance)}</p>
+          {/* Contenido de las pestañas con ancho y altura fijos */}
+          <div className="h-[300px] sm:h-[360px] w-full overflow-y-auto">
+            {/* Pestaña de Datos */}
+            {activeTab === 'datos' && (
+              <>
+                {/* Estadísticas principales */}
+                <div className="mb-4">
+                  <div className="flex flex-wrap gap-2">
+                    {fieldGroups.primary.map(key => renderField(key))}
                   </div>
-                  <div className="bg-neutral-800 p-4 rounded-lg">
-                    <h3 className="text-sm text-neutral-400 mb-1">Duración</h3>
-                    <p className="text-xl font-bold text-white">{formatDuration(activity.moving_time)}</p>
-                  </div>
-                  <div className="bg-neutral-800 p-4 rounded-lg">
-                    <h3 className="text-sm text-neutral-400 mb-1">Elevación</h3>
-                    <p className="text-xl font-bold text-white">{formatElevation(activity.total_elevation_gain)}</p>
-                  </div>
-                  {activity.sport_type === 'Run' || activity.sport_type === 'TrailRun' ? (
-                    <div className="bg-neutral-800 p-4 rounded-lg">
-                      <h3 className="text-sm text-neutral-400 mb-1">Ritmo medio</h3>
-                      <p className="text-xl font-bold text-white">{formatPace(activity.average_speed)}</p>
-                    </div>
-                  ) : (
-                    <div className="bg-neutral-800 p-4 rounded-lg">
-                      <h3 className="text-sm text-neutral-400 mb-1">Velocidad media</h3>
-                      <p className="text-xl font-bold text-white">{formatSpeed(activity.average_speed)}</p>
-                    </div>
-                  )}
-                  {activity.sport_type === 'TrailRun' && (
-                    <div className="bg-neutral-800 p-4 rounded-lg">
-                      <h3 className="text-sm text-neutral-400 mb-1">Ratio m+/km</h3>
-                      <p className="text-xl font-bold text-white">{formatElevationRatio(activity.total_elevation_gain, activity.distance)}</p>
-                    </div>
-                  )}
-                  {activity.average_heartrate && (
-                    <div className="bg-neutral-800 p-4 rounded-lg">
-                      <h3 className="text-sm text-neutral-400 mb-1">FC Media</h3>
-                      <p className="text-xl font-bold text-white">{Math.round(activity.average_heartrate)} ppm</p>
-                    </div>
-                  )}
-                  {activity.max_heartrate && (
-                    <div className="bg-neutral-800 p-4 rounded-lg">
-                      <h3 className="text-sm text-neutral-400 mb-1">FC Máxima</h3>
-                      <p className="text-xl font-bold text-white">{Math.round(activity.max_heartrate)} ppm</p>
-                    </div>
-                  )}
                 </div>
                 
-                {/* Campos adicionales si están disponibles */}
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium text-neutral-400 border-b border-neutral-700 pb-2 mb-3">Datos adicionales</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
-                    {Object.keys(activity)
-                      .filter(key => !hiddenFields.includes(key) && activity[key] !== null && activity[key] !== undefined)
-                      .sort((a, b) => {
-                        const aIndex = fieldOrder.indexOf(a);
-                        const bIndex = fieldOrder.indexOf(b);
-                        if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
-                        if (aIndex === -1) return 1;
-                        if (bIndex === -1) return -1;
-                        return aIndex - bIndex;
-                      })
-                      .map(key => (
-                        <div key={key} className="mb-2">
-                          <span className="text-sm text-neutral-400">{formatFieldName(key)}: </span>
-                          <span className="text-sm text-white font-medium">{formatFieldValue(key, activity[key])}</span>
-                        </div>
-                      ))}
+                {/* Estadísticas de rendimiento */}
+                <div className="mb-4">
+                  <h3 className="text-sm text-neutral-400 mb-1">Rendimiento</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {fieldGroups.performance.filter(key => availableFields.includes(key)).map(key => renderField(key))}
                   </div>
                 </div>
-              </div>
+                
+                {/* Estadísticas secundarias */}
+                {fieldGroups.secondary.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Potencia</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.secondary.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Altitud */}
+                {fieldGroups.elevation.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Otros</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.elevation.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Coordenadas */}
+                {fieldGroups.coordinates.some(key => availableFields.includes(key)) && (
+                  <div className="mb-4">
+                    <h3 className="text-sm text-neutral-400 mb-1">Coordenadas</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {fieldGroups.coordinates.filter(key => availableFields.includes(key)).map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Campos adicionales que no están en ningún grupo */}
+                {extraFields.length > 0 && (
+                  <div>
+                    <h3 className="text-sm text-neutral-400 mb-1">Datos adicionales</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {extraFields.map(key => renderField(key))}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
             
             {/* Pestaña de Fotos */}
@@ -764,7 +815,7 @@ function DashboardContent() {
             
             {/* Pestaña de Mapa */}
             {activeTab === 'mapa' && (
-              <div className="h-full w-full" style={{ minHeight: '400px' }}>
+              <div className="h-full w-full">
                 {loading ? (
                   <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
                     <div className="text-neutral-400">Cargando mapa...</div>
@@ -777,7 +828,7 @@ function DashboardContent() {
             
             {/* Pestaña de Gráficos */}
             {activeTab === 'graficos' && (
-              <div className="h-full w-full" style={{ minHeight: '400px' }}>
+              <div className="h-full w-full">
                 {loading ? (
                   <div className="h-full w-full bg-neutral-800 flex items-center justify-center">
                     <div className="text-neutral-400">Cargando gráficos...</div>
@@ -811,6 +862,7 @@ function DashboardContent() {
           </div>
         </div>
         
+        {/* Lightbox para visualizar imágenes a pantalla completa */}
         {lightboxOpen && (
           <ImageViewer 
             images={photos} 

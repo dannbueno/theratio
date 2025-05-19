@@ -329,7 +329,75 @@ function DashboardContent() {
           throw new Error('Failed to fetch activities');
         }
         const data = await response.json();
+        
+        // Set initial activities
         setActivities(data);
+        
+        // Now fetch precise VAM data for TrailRun activities
+        const enhancedActivities = [...data];
+        const trailRunActivities = data.filter(activity => 
+          (activity.sport_type === 'TrailRun' || activity.sport_type === 'Run') && 
+          activity.total_elevation_gain > 0
+        );
+        
+        if (trailRunActivities.length > 0) {
+          // Process each trail run activity to get precise VAM
+          const userId = await getUserId();
+          
+          // Only proceed if we have userId
+          if (userId) {
+            for (const activity of trailRunActivities) {
+              try {
+                // Get detailed streams for the activity to calculate precise VAM
+                const streamsResponse = await fetch(`https://www.strava.com/api/v3/activities/${activity.id}/streams?keys=altitude,distance,time&key_by_type=true`, {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (streamsResponse.ok) {
+                  const streams = await streamsResponse.json();
+                  
+                  // If we have the necessary data, calculate precise VAM
+                  if (streams.altitude && streams.distance && streams.time) {
+                    // Call our backend to calculate the precise VAM
+                    const vamResponse = await fetch('/api/strava/calculate-vam', {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        activityId: activity.id,
+                        userId
+                      }),
+                    });
+                    
+                    if (vamResponse.ok) {
+                      const vamData = await vamResponse.json();
+                      
+                      // Update the activity with precise VAM data
+                      if (vamData && vamData.vam) {
+                        const activityIndex = enhancedActivities.findIndex(a => a.id === activity.id);
+                        if (activityIndex >= 0) {
+                          enhancedActivities[activityIndex] = {
+                            ...enhancedActivities[activityIndex],
+                            vam: vamData.vam,
+                            climbTime: vamData.climbTime,
+                            climbMeters: vamData.climbMeters
+                          };
+                        }
+                      }
+                    }
+                  }
+                }
+              } catch (error) {
+                console.error(`Error fetching precise VAM for activity ${activity.id}:`, error);
+                // Continue with next activity, don't break the loop
+              }
+            }
+            
+            // Update activities with the enhanced data
+            setActivities(enhancedActivities);
+          }
+        }
       } catch (error) {
         console.error('Error fetching activities:', error);
       } finally {
@@ -891,9 +959,29 @@ function DashboardContent() {
                 </div>
                 {activity.total_elevation_gain > 0 && (
                   <div>
-                    <div className="text-xs text-neutral-300">⬆️ TheVAM</div>
+                    <div className="text-xs text-neutral-300 flex items-center">
+                      ⬆️ TheVAM
+                      <span 
+                        className="ml-1 text-neutral-400 cursor-help"
+                        title="TheVAM (Velocidad de Ascenso Media) puede calcularse de dos formas: 
+1) Simple: utiliza el desnivel total y tiempo total
+2) Preciso: solo considera segmentos de subida significativa"
+                      >
+                        ⓘ
+                      </span>
+                    </div>
                     <div className="text-orange-400 font-bold text-lg">
-                      {calculateVAM(activity.total_elevation_gain, activity.moving_time)} m/h
+                      {activity.vam ? (
+                        <>
+                          <span>{formatVAM(activity.vam, activity.climbTime, activity.climbMeters)}</span>
+                          <span className="ml-1 text-xs bg-green-600/20 text-green-400 px-1 py-0.5 rounded">Preciso</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{calculateVAM(activity.total_elevation_gain, activity.moving_time)} m/h</span>
+                          <span className="ml-1 text-xs bg-neutral-700/40 text-neutral-400 px-1 py-0.5 rounded">Simple</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -921,7 +1009,13 @@ function DashboardContent() {
                         const result = await response.json();
                         
                         if (result.updated) {
-                          alert('Comentario añadido correctamente');
+                          alert(
+                            'Comentario añadido correctamente.\n\n' +
+                            'Nota: El valor de TheVAM en el comentario (' + result.vam + ' m/h) ' +
+                            'puede ser diferente al mostrado en la app cuando usa el método simple, ' +
+                            'ya que para los comentarios se utiliza un cálculo preciso que solo ' +
+                            'considera segmentos de subida.'
+                          );
                         } else {
                           alert('Error al añadir comentario: ' + (result.reason || result.error || 'Error desconocido'));
                         }
